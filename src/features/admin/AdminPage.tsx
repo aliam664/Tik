@@ -53,10 +53,7 @@ export function AdminPage() {
 
   /* validate persisted session on load */
   useEffect(() => {
-    if (!token) {
-      setChecking(false);
-      return;
-    }
+    if (!token) return;
     let alive = true;
     adminApi
       .verify(token)
@@ -77,16 +74,6 @@ export function AdminPage() {
     };
   }, [token]);
 
-  if (checking) {
-    return (
-      <div className="page page--narrow admin-page">
-        <div className="room-loading">
-          <LoadingSpinner size={26} label="بررسی نشست مدیر" />
-        </div>
-      </div>
-    );
-  }
-
   if (!token) {
     return (
       <AdminLoginPage
@@ -96,6 +83,16 @@ export function AdminPage() {
           setTab("overview");
         }}
       />
+    );
+  }
+
+  if (checking) {
+    return (
+      <div className="page page--narrow admin-page">
+        <div className="room-loading">
+          <LoadingSpinner size={26} label="بررسی نشست مدیر" />
+        </div>
+      </div>
     );
   }
 

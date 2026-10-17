@@ -20,7 +20,6 @@ export function AdminOverviewPanel({
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    setLoading(true);
     setError(null);
     try {
       setOverview(await adminApi.overview(token));

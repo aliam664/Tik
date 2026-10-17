@@ -19,7 +19,6 @@ export function AdminGamesPanel({
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const res = await adminApi.listGames(token, 50, 0);
       setItems(res.items);

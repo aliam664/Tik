@@ -19,7 +19,6 @@ export function AdminAuditPanel({
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const res = await adminApi.audit(token, 100, 0);
       setItems(res.items);

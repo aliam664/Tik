@@ -30,11 +30,15 @@ export function toFaDigits(input: number | string): string {
   return String(input).replace(/\d/g, (d) => FA_DIGITS[Number(d)]);
 }
 
+const FORBIDDEN_NAME_CHARS = new Set(['<', '>', '"', "/", "\\", "`", "{", "}", "|", "%", "$"]);
+
 export function displayNameError(name: string): string | null {
   const v = name.trim();
   if (v.length < 2) return "نام باید حداقل ۲ کاراکتر باشد.";
   if (v.length > 24) return "نام حداکثر ۲۴ کاراکتر است.";
-  if (/[<>"\/\\`{}|%$]/.test(v)) return "نام شامل نویسه‌های غیرمجاز است.";
+  for (const ch of v) {
+    if (FORBIDDEN_NAME_CHARS.has(ch)) return "نام شامل نویسه‌های غیرمجاز است.";
+  }
   return null;
 }
 

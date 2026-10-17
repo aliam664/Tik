@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -21,11 +21,6 @@ export function JoinRoomPage() {
   const [codeError, setCodeError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    const fromUrl = normalizeRoomCode(searchParams.get("code"));
-    if (fromUrl) setCode(fromUrl);
-  }, [searchParams]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

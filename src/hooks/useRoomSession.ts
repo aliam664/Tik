@@ -57,7 +57,9 @@ export function useRoomSession({ roomCode, onLeft }: UseRoomSessionOptions) {
 
   const [state, setState] = useState<RoomState | null>(null);
   const [role, setRole] = useState<PlayerSymbol | null>(null);
-  const tokenRef = useRef<string | null>(playerSession.getToken(roomCode));
+  // token lives in a ref for RPC calls, mirrored to state for render
+  const [token, setToken] = useState<string | null>(() => playerSession.getToken(roomCode));
+  const tokenRef = useRef<string | null>(token);
 
   const [fatalError, setFatalError] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -207,11 +209,13 @@ export function useRoomSession({ roomCode, onLeft }: UseRoomSessionOptions) {
       const res = await api.leaveRoom(roomCode, tokenRef.current);
       playerSession.clear(roomCode);
       tokenRef.current = null;
+      setToken(null);
       onLeft?.(res.action);
     } catch {
       // even on failure, drop local credentials and move on
       playerSession.clear(roomCode);
       tokenRef.current = null;
+      setToken(null);
       onLeft?.("left");
     }
   }, [onLeft, roomCode]);
@@ -225,7 +229,7 @@ export function useRoomSession({ roomCode, onLeft }: UseRoomSessionOptions) {
     state,
     board,
     role,
-    token: tokenRef.current,
+    token,
     fatalError,
     initialLoading,
     connection,
