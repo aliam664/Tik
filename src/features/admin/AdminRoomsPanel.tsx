@@ -1,0 +1,216 @@
+import { useCallback, useEffect, useState } from "react";
+import { Eye, Search, ShieldOff } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/Modal";
+import { Input } from "@/components/ui/Input";
+import { EmptyState, LoadingSpinner } from "@/components/ui/Feedback";
+import { useToast } from "@/components/ui/Toast";
+import { adminApi } from "@/lib/api";
+import { toUserError } from "@/lib/errors";
+import { formatDateTime, formatRelativeSeconds, toFaDigits } from "@/lib/format";
+import type { AdminRoomRow } from "@/types/api";
+import { RoomDetailModal } from "./RoomDetailModal";
+
+const STATUS_FILTERS: { value: string; label: string }[] = [
+  { value: "", label: "همه" },
+  { value: "waiting", label: "در انتظار" },
+  { value: "active", label: "زنده" },
+  { value: "finished", label: "تمام‌شده" },
+  { value: "expired", label: "منقضی" },
+  { value: "closed", label: "بسته" },
+];
+
+const STATUS_LABELS: Record<string, string> = {
+  waiting: "در انتظار",
+  active: "زنده",
+  finished: "تمام‌شده",
+  expired: "منقضی",
+  closed: "بسته",
+};
+
+export function AdminRoomsPanel({
+  token,
+  onSessionExpired,
+}: {
+  token: string;
+  onSessionExpired: () => void;
+}) {
+  const { showToast } = useToast();
+  const [items, setItems] = useState<AdminRoomRow[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [detailCode, setDetailCode] = useState<string | null>(null);
+  const [closeTarget, setCloseTarget] = useState<AdminRoomRow | null>(null);
+  const [closing, setClosing] = useState(false);
+
+  const load = useCallback(
+    async (opts?: { search?: string; status?: string }) => {
+      setLoading(true);
+      try {
+        const res = await adminApi.listRooms(token, {
+          search: opts?.search ?? "",
+          status: opts?.status || null,
+          limit: 50,
+          offset: 0,
+        });
+        setItems(res.items);
+        setTotal(res.total);
+      } catch (err) {
+        const user = toUserError(err);
+        if (user.code === "ADMIN_UNAUTHORIZED") {
+          onSessionExpired();
+          return;
+        }
+        showToast(user.message, "error");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [onSessionExpired, showToast, token],
+  );
+
+  useEffect(() => {
+    void load({ search: "", status: "" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const closeRoom = async () => {
+    if (!closeTarget) return;
+    setClosing(true);
+    try {
+      await adminApi.closeRoom(token, closeTarget.room_code, "closed by admin panel");
+      showToast(`اتاق ${closeTarget.room_code} بسته شد`, "success");
+      setCloseTarget(null);
+      void load({ search, status });
+    } catch (err) {
+      const user = toUserError(err);
+      showToast(user.message, "error");
+    } finally {
+      setClosing(false);
+    }
+  };
+
+  return (
+    <section className="admin-panel" aria-label="مدیریت اتاق‌ها">
+      <form
+        className="admin-toolbar"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void load({ search, status });
+        }}
+      >
+        <div className="admin-toolbar__search">
+          <Search size={15} aria-hidden="true" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value.toUpperCase().replace(/[^A-Z2-9]/gi, "").slice(0, 6))}
+            placeholder="جست‌وجوی کد اتاق…"
+            dir="ltr"
+            className="ltr num"
+            aria-label="جست‌وجوی کد اتاق"
+          />
+        </div>
+        <div className="admin-toolbar__filters" role="group" aria-label="فیلتر وضعیت">
+          {STATUS_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              className={`chip ${status === f.value ? "chip--active" : ""}`}
+              aria-pressed={status === f.value}
+              onClick={() => {
+                setStatus(f.value);
+                void load({ search, status: f.value });
+              }}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <Button type="submit" size="sm" variant="secondary" loading={loading}>
+          جست‌وجو
+        </Button>
+      </form>
+
+      {loading && !items ? (
+        <div className="room-loading">
+          <LoadingSpinner size={24} label="دریافت اتاق‌ها" />
+        </div>
+      ) : items && items.length === 0 ? (
+        <EmptyState title="اتاقی پیدا نشد" description="فیلترها را تغییر دهید یا اتاق جدیدی ساخته شود." />
+      ) : items ? (
+        <div className="table-wrap" role="region" aria-label="فهرست اتاق‌ها" tabIndex={0}>
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th scope="col">کد</th>
+                <th scope="col">وضعیت</th>
+                <th scope="col">بازیکنان</th>
+                <th scope="col">حرکت‌ها</th>
+                <th scope="col">آخرین فعالیت</th>
+                <th scope="col">انقضا</th>
+                <th scope="col">عملیات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((room) => (
+                <tr key={room.room_code}>
+                  <td className="ltr num">{room.room_code}</td>
+                  <td>
+                    <span className={`status-pill status-pill--${room.status}`}>
+                      {STATUS_LABELS[room.status] ?? room.status}
+                    </span>
+                  </td>
+                  <td>
+                    {room.players?.length
+                      ? room.players
+                          .map((p) => `${p.symbol === "X" ? "X" : "O"}: ${p.name}${p.connected ? "" : " (قطع)"}`)
+                          .join(" — ")
+                      : "—"}
+                  </td>
+                  <td className="num">{toFaDigits(room.move_count)}</td>
+                  <td>{formatDateTime(room.last_activity_at)}</td>
+                  <td>{formatRelativeSeconds(room.expires_in_seconds)}</td>
+                  <td>
+                    <div className="row-actions">
+                      <Button size="sm" variant="ghost" icon={<Eye size={14} aria-hidden="true" />} onClick={() => setDetailCode(room.room_code)}>
+                        جزئیات
+                      </Button>
+                      {room.status !== "closed" ? (
+                        <Button size="sm" variant="ghost" className="text-danger" icon={<ShieldOff size={14} aria-hidden="true" />} onClick={() => setCloseTarget(room)}>
+                          بستن
+                        </Button>
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      <p className="admin-panel__meta">
+        نمایش {items ? toFaDigits(items.length) : "۰"} از {toFaDigits(total)} اتاق (۵۰ مورد در هر صفحه)
+      </p>
+
+      <RoomDetailModal
+        token={token}
+        roomCode={detailCode}
+        onClose={() => setDetailCode(null)}
+        onSessionExpired={onSessionExpired}
+      />
+
+      <ConfirmDialog
+        open={!!closeTarget}
+        title="بستن اتاق"
+        description={`اتاق ${closeTarget?.room_code ?? ""} بسته می‌شود و بازیکنان از آن خارج می‌شوند. این عملیات در گزارش ثبت می‌شود.`}
+        confirmLabel="بستن اتاق"
+        danger
+        loading={closing}
+        onConfirm={() => void closeRoom()}
+        onCancel={() => setCloseTarget(null)}
+      />
+    </section>
+  );
+}

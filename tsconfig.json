@@ -18,9 +18,8 @@
     "forceConsistentCasingInFileNames": true,
     "useUnknownInCatchVariables": true,
     "types": ["vite/client", "node"],
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src", "tests", "vite.config.ts"]
