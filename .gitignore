@@ -5,6 +5,10 @@ node_modules/
 dist/
 coverage/
 
+# Cloudflare Workers does not accept _redirects (error 100324 Infinite loop).
+# SPA fallback is configured in wrangler.jsonc (not_found_handling: single-page-application).
+public/_redirects
+
 # Environment — never commit real secrets
 .env
 .env.local
