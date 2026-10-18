@@ -6,11 +6,18 @@ import type {
   AdminSession,
   AuditRow,
   JoinCreateResponse,
+  LeaderboardResponse,
   LeaveResponse,
+  MyProfileResponse,
   Paged,
   PlatformSettings,
   PublicStatus,
+  QueueAcceptResponse,
+  QueueStatusResponse,
+  RecoverPlayerResponse,
+  RegisterPlayerResponse,
   RoomStateResponse,
+  ShopItem,
 } from "@/types/api";
 import { ApiError } from "./errors";
 import { supabase } from "./supabase";
@@ -75,6 +82,80 @@ export const api = {
 
   getPublicStatus() {
     return rpc<PublicStatus>("get_public_status", {});
+  },
+
+  /* --------------------- Player profile & economy --------------------- */
+
+  registerPlayer(displayName: string) {
+    return rpc<RegisterPlayerResponse>("register_player", {
+      p_display_name: displayName,
+    });
+  },
+
+  recoverPlayer(recoveryCode: string) {
+    return rpc<RecoverPlayerResponse>("recover_player", {
+      p_recovery_code: recoveryCode,
+    });
+  },
+
+  rotateRecoveryCode(token: string) {
+    return rpc<{ recovery_code: string }>("rotate_recovery_code", {
+      p_token: token,
+    });
+  },
+
+  getMyProfile(token: string) {
+    return rpc<MyProfileResponse>("get_my_profile", { p_token: token });
+  },
+
+  getLeaderboard(period = "season", limit = 50, offset = 0) {
+    return rpc<LeaderboardResponse>("get_leaderboard", {
+      p_period: period,
+      p_limit: limit,
+      p_offset: offset,
+    });
+  },
+
+  listShopItems() {
+    return rpc<ShopItem[]>("list_shop_items", {});
+  },
+
+  purchaseItem(token: string, itemId: string) {
+    return rpc<{ ok: boolean; balance: number; item: string }>("purchase_item", {
+      p_token: token,
+      p_item_id: itemId,
+    });
+  },
+
+  getAnnouncements() {
+    return rpc<{ body: string; level: string; ends_at: string }[]>(
+      "get_active_announcements",
+      {},
+    );
+  },
+
+  /* ---------------------------- Matchmaking ---------------------------- */
+
+  queueJoin(token: string, mode: "ranked" | "stakes", stake = 0) {
+    return rpc<QueueStatusResponse>("queue_join", {
+      p_token: token,
+      p_mode: mode,
+      p_stake: stake,
+    });
+  },
+
+  queueLeave(token: string) {
+    return rpc<{ ok: boolean; dodged?: boolean }>("queue_leave", {
+      p_token: token,
+    });
+  },
+
+  queueAccept(token: string) {
+    return rpc<QueueAcceptResponse>("queue_accept", { p_token: token });
+  },
+
+  queueStatus(token: string) {
+    return rpc<QueueStatusResponse>("queue_status", { p_token: token });
   },
 };
 
@@ -173,6 +254,176 @@ export const adminApi = {
   audit(token: string, limit = 50, offset = 0) {
     return rpc<Paged<AuditRow>>("admin_get_audit", {
       p_admin_token: token,
+      p_limit: limit,
+      p_offset: offset,
+    });
+  },
+
+  /* --------------------- Professional admin suite --------------------- */
+
+  dashboard(token: string) {
+    return rpc<Record<string, number | string | null>>("admin_get_dashboard", {
+      p_admin_token: token,
+    });
+  },
+
+  listPlayers(
+    token: string,
+    opts: { search?: string; limit?: number; offset?: number } = {},
+  ) {
+    return rpc<{
+      total: number;
+      items: Record<string, unknown>[];
+      limit: number;
+      offset: number;
+    }>("admin_list_players", {
+      p_admin_token: token,
+      p_search: opts.search && opts.search.trim() ? opts.search.trim() : null,
+      p_limit: opts.limit ?? 25,
+      p_offset: opts.offset ?? 0,
+    });
+  },
+
+  getPlayer(token: string, playerId: string) {
+    return rpc<Record<string, unknown>>("admin_get_player", {
+      p_admin_token: token,
+      p_player_id: playerId,
+    });
+  },
+
+  adjustCoins(token: string, playerId: string, amount: number, note: string) {
+    return rpc<{ ok: boolean; balance: number }>("admin_adjust_coins", {
+      p_admin_token: token,
+      p_player_id: playerId,
+      p_amount: amount,
+      p_reason: "panel",
+      p_note: note,
+    });
+  },
+
+  setWalletFrozen(token: string, playerId: string, frozen: boolean, reason?: string) {
+    return rpc<{ ok: boolean }>("admin_set_wallet_frozen", {
+      p_admin_token: token,
+      p_player_id: playerId,
+      p_frozen: frozen,
+      p_reason: reason ?? null,
+    });
+  },
+
+  setBan(
+    token: string,
+    playerId: string,
+    scope: "queue" | "stakes" | "global",
+    hours: number,
+    reason?: string,
+  ) {
+    return rpc<{ ok: boolean }>("admin_set_ban", {
+      p_admin_token: token,
+      p_player_id: playerId,
+      p_scope: scope,
+      p_hours: hours,
+      p_reason: reason ?? null,
+    });
+  },
+
+  resetRating(token: string, playerId: string, reason?: string) {
+    return rpc<{ ok: boolean }>("admin_reset_rating", {
+      p_admin_token: token,
+      p_player_id: playerId,
+      p_reason: reason ?? null,
+    });
+  },
+
+  getEconomy(token: string) {
+    return rpc<Record<string, unknown>>("admin_get_economy", {
+      p_admin_token: token,
+    });
+  },
+
+  updateEconomyConfig(token: string, key: string, value: string, reason: string) {
+    return rpc<{ ok: boolean }>("admin_update_economy_config", {
+      p_admin_token: token,
+      p_key: key,
+      p_value: value,
+      p_reason: reason,
+    });
+  },
+
+  rollbackEconomyConfig(token: string, historyId: number, reason?: string) {
+    return rpc<{ ok: boolean }>("admin_rollback_economy_config", {
+      p_admin_token: token,
+      p_history_id: historyId,
+      p_reason: reason ?? null,
+    });
+  },
+
+  listRiskFlags(token: string, status = "open", limit = 50, offset = 0) {
+    return rpc<{
+      total: number;
+      items: Record<string, unknown>[];
+      limit: number;
+      offset: number;
+    }>("admin_list_risk_flags", {
+      p_admin_token: token,
+      p_status: status || null,
+      p_limit: limit,
+      p_offset: offset,
+    });
+  },
+
+  resolveRiskFlag(token: string, flagId: string, resolution: "resolved" | "dismissed", note?: string) {
+    return rpc<{ ok: boolean }>("admin_resolve_risk_flag", {
+      p_admin_token: token,
+      p_flag_id: flagId,
+      p_resolution: resolution,
+      p_note: note ?? null,
+    });
+  },
+
+  matchmakingStats(token: string) {
+    return rpc<Record<string, unknown>>("admin_matchmaking_stats", {
+      p_admin_token: token,
+    });
+  },
+
+  listSeasons(token: string) {
+    return rpc<Record<string, unknown>[]>("admin_list_seasons", {
+      p_admin_token: token,
+    });
+  },
+
+  createSeason(
+    token: string,
+    name: string,
+    startsAt: string,
+    endsAt: string,
+    resetFactor = 0.7,
+  ) {
+    return rpc<{ ok: boolean }>("admin_create_season", {
+      p_admin_token: token,
+      p_name: name,
+      p_starts_at: startsAt,
+      p_ends_at: endsAt,
+      p_reset_factor: resetFactor,
+    });
+  },
+
+  endSeason(token: string, seasonId: string) {
+    return rpc<{ ok: boolean; players: number }>("admin_end_season", {
+      p_admin_token: token,
+      p_season_id: seasonId,
+    });
+  },
+
+  listMatches(token: string, mode: string | null, limit = 50, offset = 0) {
+    return rpc<{
+      total: number;
+      items: Record<string, unknown>[];
+      limit: number;
+      offset: number;
+    }>("admin_list_matches", {
+      p_admin_token: token,
+      p_mode: mode,
       p_limit: limit,
       p_offset: offset,
     });

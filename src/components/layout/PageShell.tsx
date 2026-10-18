@@ -23,6 +23,18 @@ export function ResponsiveNavigation() {
       <NavLink to="/" end className={({ isActive }) => `main-nav__link ${isActive ? "main-nav__link--active" : ""}`}>
         خانه
       </NavLink>
+      <NavLink to="/play" className={({ isActive }) => `main-nav__link ${isActive ? "main-nav__link--active" : ""}`}>
+        بازی رقابتی
+      </NavLink>
+      <NavLink to="/leaderboard" className={({ isActive }) => `main-nav__link ${isActive ? "main-nav__link--active" : ""}`}>
+        رده‌بندی
+      </NavLink>
+      <NavLink to="/shop" className={({ isActive }) => `main-nav__link ${isActive ? "main-nav__link--active" : ""}`}>
+        فروشگاه
+      </NavLink>
+      <NavLink to="/profile" className={({ isActive }) => `main-nav__link ${isActive ? "main-nav__link--active" : ""}`}>
+        پروفایل
+      </NavLink>
       <NavLink to="/rules" className={({ isActive }) => `main-nav__link ${isActive ? "main-nav__link--active" : ""}`}>
         قوانین
       </NavLink>

@@ -24,6 +24,18 @@ const RoomPage = lazy(() =>
 const AdminPage = lazy(() =>
   import("@/features/admin/AdminPage").then((m) => ({ default: m.AdminPage })),
 );
+const PlayPage = lazy(() =>
+  import("@/features/play/PlayPage").then((m) => ({ default: m.PlayPage })),
+);
+const ProfilePage = lazy(() =>
+  import("@/features/profile/ProfilePage").then((m) => ({ default: m.ProfilePage })),
+);
+const LeaderboardPage = lazy(() =>
+  import("@/features/leaderboard/LeaderboardPage").then((m) => ({ default: m.LeaderboardPage })),
+);
+const ShopPage = lazy(() =>
+  import("@/features/shop/ShopPage").then((m) => ({ default: m.ShopPage })),
+);
 
 function RouteFallback() {
   return (
@@ -42,6 +54,10 @@ export function AppRouter() {
           <Route path="/create" element={<CreateRoomPage />} />
           <Route path="/join" element={<JoinRoomPage />} />
           <Route path="/room/:roomCode" element={<RoomPage />} />
+          <Route path="/play" element={<PlayPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/shop" element={<ShopPage />} />
           <Route path="/rules" element={<RulesPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/admin" element={<AdminPage />} />
