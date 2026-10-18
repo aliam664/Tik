@@ -1,1 +1,196 @@
-# Tik
+# دوز آنلاین — DOZ ONLINE
+
+پلتفرم آنلاین بازی دوز (Tic-Tac-Toe) دو نفره: بدون ثبت‌نام، با کد اتاق، همگام‌سازی زنده، رابط فارسی راست‌به‌چپ و امنیت سمت سرور.
+
+> کلاینت فقط نمایش‌دهنده است؛ **هر حرکت و هر نتیجه روی سرور (PostgreSQL) اعتبارسنجی و محاسبه می‌شود.**
+
+---
+
+## فهرست
+
+1. [معرفی پروژه](#معرفی-پروژه)
+2. [فناوری‌ها](#فناوری‌های-استفاده‌شده)
+3. [پیش‌نیازها](#پیش‌نیازها)
+4. [نصب وابستگی‌ها](#نصب-وابستگی‌ها)
+5. [اجرای محیط توسعه](#اجرای-محیط-توسعه)
+6. [ساخت نسخه نهایی](#ساخت-نسخه-نهایی)
+7. [متغیرهای محیطی](#تنظیم-متغیرهای-محیطی)
+8. [راه‌اندازی Supabase](#راه‌اندازی-supabase)
+9. [اجرای Migration ها](#اجرای-migration-ها)
+10. [تنظیم RLS](#تنظیم-rls)
+11. [ساخت حساب مدیر](#ساخت-حساب-مدیر)
+12. [اجرای تست‌ها](#اجرای-تست‌ها)
+13. [انتشار روی Cloudflare Pages](#انتشار-روی-cloudflare-pages)
+14. [عیب‌یابی خطاهای رایج](#عیب‌یابی-خطاهای-رایج)
+15. [پشتیبان‌گیری و نگهداری](#پشتیبان‌گیری-و-نگهداری)
+16. [محدودیت‌های شناخته‌شده](#محدودیت‌های-شناخته‌شده)
+
+---
+
+## معرفی پروژه
+
+- **صفحات:** خانه `/`، ساخت اتاق `/create`، ورود به اتاق `/join`، بازی `/room/:code`، قوانین `/rules`، حریم خصوصی `/privacy`، پنل مدیریت `/admin`
+- **جریان بازی:** میزبان اتاق می‌سازد → کد ۶ نویسه‌ای می‌گیرد → با «کپی لینک دعوت» دوستش را دعوت می‌کند → با ورود مهمان، بازی به‌صورت خودکار فعال می‌شود
+- **هویت بازیکن:** بعد از ورود، یک توکن تصادفی ۱۲۸بیتی فقط در `sessionStorage` مرورگر او ذخیره می‌شود؛ روی سرور فقط هش SHA-256 آن نگه‌داری می‌شود
+- **Realtime:** تغییر وضعیت با broadcast امن از خودِ دیتابیس (`realtime.send`) به کانال `room:<CODE>` ارسال می‌شود؛ هیچ جدولی مستقیم استریم نمی‌شود
+- **مدیریت:** پنل `/admin` با حساب مستقل (bcrypt)، داشبورد آمار واقعی، مدیریت اتاق‌ها، بازی‌ها، تنظیمات و Audit Log
+
+## فناوری‌های استفاده‌شده
+
+| لایه | فناوری |
+|---|---|
+| Frontend | React 19 + TypeScript + Vite، React Router، lucide-react، CSS خالص با Design Tokens |
+| Backend / DB | Supabase (PostgreSQL 17) — توابع امن `SECURITY DEFINER`، RLS، Realtime Broadcast |
+| هاست | Cloudflare Pages (استاتیک) + Supabase (API/DB/Realtime) |
+| تست | Vitest + React Testing Library (+ مجموعه تست امنیتی SQL روی پروژه واقعی) |
+| فونت | Vazirmatn — میزبانی محلی، مجوز OFL (`public/fonts/OFL.txt`) |
+
+## پیش‌نیازها
+
+- Node.js ≥ 20 (توسعه روی Node 22 انجام شده)
+- npm ≥ 10
+- یک پروژه Supabase (رایگان کافی است)
+- در صورت انتشار: حساب Cloudflare
+
+## نصب وابستگی‌ها
+
+```bash
+npm install
+```
+
+## اجرای محیط توسعه
+
+```bash
+npm run dev
+# → http://localhost:5173
+```
+
+## ساخت نسخه نهایی
+
+```bash
+npm run build      # تایپ‌چک + بیلد در dist/
+npm run preview    # پیش‌نمایش نسخه بیلد‌شده
+```
+
+## تنظیم متغیرهای محیطی
+
+```bash
+cp .env.example .env
+```
+
+سپس مقادیر واقعی را از **Dashboard → Project Settings → API** پروژه Supabase بگذارید:
+
+```
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<anon یا publishable key>
+```
+
+- فقط کلید **عمومی** (anon/publishable) در فرانت‌اند استفاده می‌شود؛ کلید `service_role` هرگز نباید در `.env` فرانت یا مخزن قرار گیرد.
+- فایل `.env` در `.gitignore` است.
+
+## راه‌اندازی Supabase
+
+1. در [supabase.com](https://supabase.com) یک پروژه بسازید (پلن رایگان کافی است).
+2. URL و کلید anon را بردارید و در `.env` قرار دهید.
+
+## اجرای Migration ها
+
+فایل‌های `supabase/migrations/` به‌ترتیب شماره اجرا می‌شوند. دو راه:
+
+**الف) با Supabase CLI:**
+
+```bash
+supabase link --project-ref <project-ref>
+supabase db push
+```
+
+**ب) دستی:** محتوای هر فایل را به‌ترتیب در **SQL Editor** داشبورد اجرا کنید
+(`0001_init_schema` → `0002_security_helpers` → `0003_player_rpcs` → `0004_admin_rpcs` → `0005_lockdown` → `0006_cron_cleanup` → `0007_pgcrypto_qualify`).
+
+## تنظیم RLS
+
+Migration شماره `0005_lockdown` همه‌چیز را انجام می‌دهد:
+
+- RLS روی **همه** جداول فعال و بدون هیچ Policy مجاز → دسترسی مستقیم جدولی صفر
+- `REVOKE ALL` روی جداول و سکانس‌ها از `anon` و `authenticated`
+- فقط یک لیست‌سفید از توابع امن به `anon` مجاز است
+
+بررسی صحت:
+
+```sql
+set local role anon;
+select * from public.rooms;   -- باید خطای permission denied بدهد ✓
+select public.get_public_status();  -- باید کار کند ✓
+```
+
+## ساخت حساب مدیر
+
+در **SQL Editor** (یا psql با نقش postgres):
+
+```sql
+insert into public.admin_users (username, password_hash)
+values ('admin', extensions.crypt('رمز-قوی-حداقل-۱۰-کاراکتر', extensions.gen_salt('bf', 12)));
+```
+
+سپس در `/admin` با همان نام کاربری/رمز وارد شوید. تغییر رمز از خود پنل (بخش ورود → پس از ورود، دکمه خروج کنار «مشاهده سایت» — یا از SQL) انجام‌شدنی است؛ برای چند مدیر کافی است ردیف جدیدی در `admin_users` بسازید.
+
+> رمز مدیر را در مخزن/مستندات ذخیره نکنید.
+
+## اجرای تست‌ها
+
+```bash
+npm test            # یک‌بار اجرا (Vitest + RTL)
+npm run test:watch  # حالت watch
+npm run typecheck   # فقط تایپ‌چک
+```
+
+مجموعه تست امنیتی سطح دیتابیس (کدهای آن در گزارش تحویل پروژه آمده) روی پروژه واقعی اجرا شده و شامل: حرکت با توکن نامعتبر/اتاق دیگر، حرکت خارج از نوبت، خانه پر، حرکت بعد از پایان، انقضا، ظرفیت اتاق، Rate Limit، رد شدن خواندن/نوشتن مستقیم جدول‌ها برای `anon`، توکن جعلی مدیر و ابطال نشست پس از خروج است.
+
+## انتشار روی Cloudflare Pages
+
+### راه ۱ — فرایند جدید Workers (پیش‌فرض فعلی داشبورد)
+
+فایل `wrangler.jsonc` در ریشه مخزن آماده است (assets-only Worker با SPA fallback).
+
+1. Workers & Pages → Create → Connect to Git → مخزن `Tik`
+2. فیلدها:
+   - Project name: `tik` (باید با `name` داخل `wrangler.jsonc` یکی باشد)
+   - Build command: `npm run build`
+   - Deploy command: `npx wrangler deploy` (پیش‌فرض)
+   - Preview command: `npx wrangler versions upload`
+   - Enable Preview builds: روشن — Protect with Cloudflare Access: خاموش
+3. **Advanced settings → Production branch** را روی شاخه‌ای که کد در آن است بگذارید (مثلاً `arena/94a5ec80-tik`) وگرنه از `main` خالی بیلد می‌شود
+4. **Build variables** (همان‌جا یا بعداً در Settings → Build → Variables and Secrets):
+   - `VITE_SUPABASE_URL` · `VITE_SUPABASE_ANON_KEY` · `NODE_VERSION=22`
+5. Deploy → آدرس `https://tik.<account>.workers.dev`
+
+### راه ۲ — Pages کلاسیک (اگر گزینه Pages را دیدید)
+
+Framework preset: **Vite** · Build command: `npm run build` · Output directory: `dist` · متغیرها همان‌ها.
+
+فایل‌های `public/_redirects` (SPA fallback) و `public/_headers` (CSP) در هر دو مسیر از `dist/` سرو می‌شوند.
+
+## عیب‌یابی خطاهای رایج
+
+| مشکل | علت / راه‌حل |
+|---|---|
+| «متغیر محیطی VITE_SUPABASE_URL تنظیم نشده» | `.env` نساخته‌اید یا سرور را بعد از ساخت آن ری‌استارت نکرده‌اید |
+| خطای `ROOM_NOT_FOUND` با کد درست | کد شامل 0 یا 1 است — کدهای اتاق این نویسه‌ها را ندارند |
+| Realtime پیام نمی‌دهد | آدرس `wss://*.supabase.co` در CSP/فایروال بسته است؛ `connect-src` را بررسی کنید |
+| `permission denied for table ...` در توسعه دیتابیس | طبیعی است؛ دسترسی فقط از طریق RPC هاست |
+| بعد از deploy صفحه خالی است | متغیرهای محیطی در Cloudflare تنظیم نشده‌اند → دوباره Deploy بگیرید |
+| اتاق ناگهان «منقضی» | عمر اتاق محدود است (پیش‌فرض ۳ ساعت از آخرین فعالیت) — از پنل قابل تغییر است |
+
+## پشتیبان‌گیری و نگهداری
+
+- **دیتابیس:** Dashboard → Database → Backups (پلن رایگان: ۷ روز). برای خروجی دستی: `supabase db dump`.
+- **پاک‌سازی خودکار:** job ‏`doz-cleanup` (pg_cron، هر ۳۰ دقیقه) اتاق‌های منقضی، ردیف‌های Rate Limit قدیمی و نشست‌های منقضی مدیر را حذف می‌کند؛ علاوه بر آن، `create_room` به‌صورت احتمالی هم پاک‌سازی می‌کند.
+- **لاگ عملیات:** جدول `audit_log` (بدون هیچ راز/توکنی).
+- **چرخش رمز مدیر:** از پنل یا با `admin_change_password`؛ همه نشست‌های دیگر باطل می‌شود.
+
+## محدودیت‌های شناخته‌شده
+
+- **دو دستگاه واقعی:** سناریوی دو مرورگر مستقل باید توسط انسان روی دو دستگاه/دو پنجره امتحان شود؛ خودکارسازی کامل آن در سندباکسِ بدون دسترسی شبکه به `supabase.co` ممکن نبود (تست امنیتی/یکپارچگی معادل در سطح SQL اجرا شد).
+- بازیکنان «تماشاگر» پشتیبانی نمی‌شوند (ظرفیت هر اتاق دقیقاً ۲ نفر است).
+- در صورت بستن مرتبه مرورگر، توکن نشست پاک می‌شود (`sessionStorage`) — یعنی بازی بعد از بستن مرتبه قابل بازیابی نیست (تصمیم امنیتی آگاهانه؛ refresh در همان مرتبه سالم است).
+- محدودیت‌های پلن رایگان Supabase/Cloudflare را جدی بگیرید — بخش «هزینه» در `docs/COSTS.md`.

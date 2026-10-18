@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+coverage/
+
+# Environment — never commit real secrets
+.env
+.env.local
+.env.*.local
+
+# OS / editor
+.DS_Store
+*.local
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Test artifacts
+test-results/
+playwright-report/
