@@ -6,6 +6,7 @@ import "./styles/base.css";
 import "./styles/animations.css";
 import "./styles/components.css";
 import "./styles/pages.css";
+import "./styles/economy.css";
 
 const rootEl = document.getElementById("root");
 if (!rootEl) {

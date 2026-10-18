@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Gamepad2, LogIn, Plus, ShieldCheck, Swords, Users, Zap } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { ShCoin } from "@/components/ui/Coin";
 import { useToast } from "@/components/ui/Toast";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { api } from "@/lib/api";
@@ -77,6 +78,9 @@ export function HomePage() {
           <Button size="lg" variant="secondary" icon={<LogIn size={18} aria-hidden="true" />} onClick={() => navigate("/join")}>
             ورود به اتاق
           </Button>
+          <Button size="lg" variant="secondary" icon={<Swords size={18} aria-hidden="true" />} onClick={() => navigate("/play")}>
+            بازی رقابتی و شرط
+          </Button>
         </div>
 
         <div className="hero__status" aria-live="polite">
@@ -105,6 +109,17 @@ export function HomePage() {
       </section>
 
       <section className="home-notes" aria-label="نکات امنیتی">
+        <div className="note-card">
+          <ShCoin size={22} />
+          <div>
+            <h2 className="note-card__title">شریف‌کوین و رنکینگ حرفه‌ای</h2>
+            <p className="note-card__text">
+              در بخش <Link className="link" to="/play">بازی رقابتی</Link> با حریف هم‌سطح بازی کن،
+              امتیاز رنک بگیر و شریف‌کوین (sh) جمع کن. <Link className="link" to="/leaderboard">جدول رده‌بندی</Link>{" "}
+              و <Link className="link" to="/shop">فروشگاه آرایشی</Link> را هم ببین.
+            </p>
+          </div>
+        </div>
         <div className="note-card">
           <ShieldCheck size={20} aria-hidden="true" />
           <div>

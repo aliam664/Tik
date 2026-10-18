@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ClipboardList, DoorClosed, LayoutDashboard, LogOut, Settings2, Trophy } from "lucide-react";
+import {
+  ClipboardList,
+  DoorClosed,
+  Flag,
+  LayoutDashboard,
+  LogOut,
+  Settings2,
+  ShieldAlert,
+  Trophy,
+  Users,
+  Coins,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ErrorState, LoadingSpinner } from "@/components/ui/Feedback";
 import { FormField, Input } from "@/components/ui/Input";
@@ -10,15 +21,32 @@ import { adminApi } from "@/lib/api";
 import { toUserError } from "@/lib/errors";
 import { adminSession } from "@/lib/session";
 import { AdminAuditPanel } from "./AdminAuditPanel";
+import { AdminEconomyPanel } from "./AdminEconomyPanel";
 import { AdminGamesPanel } from "./AdminGamesPanel";
+import { AdminIntegrityPanel } from "./AdminIntegrityPanel";
 import { AdminOverviewPanel } from "./AdminOverviewPanel";
+import { AdminPlayersPanel } from "./AdminPlayersPanel";
 import { AdminRoomsPanel } from "./AdminRoomsPanel";
+import { AdminSeasonsPanel } from "./AdminSeasonsPanel";
 import { AdminSettingsPanel } from "./AdminSettingsPanel";
 
-type Tab = "overview" | "rooms" | "games" | "settings" | "audit";
+type Tab =
+  | "overview"
+  | "players"
+  | "economy"
+  | "integrity"
+  | "seasons"
+  | "rooms"
+  | "games"
+  | "settings"
+  | "audit";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "overview", label: "نمای کلی", icon: <LayoutDashboard size={15} aria-hidden="true" /> },
+  { id: "players", label: "بازیکنان", icon: <Users size={15} aria-hidden="true" /> },
+  { id: "economy", label: "اقتصاد", icon: <Coins size={15} aria-hidden="true" /> },
+  { id: "integrity", label: "ضدتقلب", icon: <ShieldAlert size={15} aria-hidden="true" /> },
+  { id: "seasons", label: "فصل‌ها", icon: <Flag size={15} aria-hidden="true" /> },
   { id: "rooms", label: "اتاق‌ها", icon: <DoorClosed size={15} aria-hidden="true" /> },
   { id: "games", label: "بازی‌ها", icon: <Trophy size={15} aria-hidden="true" /> },
   { id: "settings", label: "تنظیمات", icon: <Settings2 size={15} aria-hidden="true" /> },
@@ -158,6 +186,14 @@ function AdminTabContent({
   switch (tab) {
     case "overview":
       return <AdminOverviewPanel token={token} onSessionExpired={onSessionExpired} />;
+    case "players":
+      return <AdminPlayersPanel token={token} onSessionExpired={onSessionExpired} />;
+    case "economy":
+      return <AdminEconomyPanel token={token} onSessionExpired={onSessionExpired} />;
+    case "integrity":
+      return <AdminIntegrityPanel token={token} onSessionExpired={onSessionExpired} />;
+    case "seasons":
+      return <AdminSeasonsPanel token={token} onSessionExpired={onSessionExpired} />;
     case "rooms":
       return <AdminRoomsPanel token={token} onSessionExpired={onSessionExpired} />;
     case "games":

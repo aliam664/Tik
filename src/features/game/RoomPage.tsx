@@ -184,6 +184,13 @@ export function RoomPage() {
 
   return (
     <RoomFrame state={state} session={session}>
+      {state.mode !== "friendly" ? (
+        <div className="room-mode-line" aria-label="نوع بازی">
+          <span className={`room-mode-chip room-mode-chip--${state.mode}`}>
+            {state.mode === "stakes" ? `شرطی · ${state.stake} sh` : "رده‌بندی‌شده"}
+          </span>
+        </div>
+      ) : null}
       <div className="players-row" aria-label="بازیکنان">
         <PlayerCard
           symbol={mySymbol}
@@ -208,13 +215,21 @@ export function RoomPage() {
           <span className="invite-card__pulse" aria-hidden="true">
             <Hourglass size={26} />
           </span>
-          <h2 className="invite-card__title">در انتظار بازیکن دوم…</h2>
+          <h2 className="invite-card__title">
+            {opponent ? "در انتظار آماده‌شدن حریف…" : "در انتظار بازیکن دوم…"}
+          </h2>
           <p className="invite-card__text">
-            این کد را برای دوستتان بفرستید. به‌محض ورود او، بازی شروع می‌شود.
+            {opponent
+              ? state.mode !== "friendly"
+                ? "بازی به‌محض آماده‌شدن حریف شروع می‌شود."
+                : "به‌محض آماده‌شدن حریف، بازی شروع می‌شود."
+              : "این کد را برای دوستتان بفرستید. به‌محض ورود او، بازی شروع می‌شود."}
           </p>
-          <div className="invite-card__code">
-            <RoomCodeDisplay code={state.room_code} size="lg" />
-          </div>
+          {opponent ? null : (
+            <div className="invite-card__code">
+              <RoomCodeDisplay code={state.room_code} size="lg" />
+            </div>
+          )}
         </section>
       ) : (
         <GameBoard
