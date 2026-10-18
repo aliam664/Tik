@@ -1,23 +1,34 @@
-/* DOZ ONLINE — Design tokens (single source of truth for the visual system) */
+/* DOZ ONLINE — Design tokens (single source of truth for the visual system)
+ * ---------------------------------------------------------------------------
+ * Theme: "Tactical Dark Carbon & Brushed Gold" — Designer: Ali369
+ * Deep carbon surfaces, precise 1px borders, brushed-gold accents.
+ * --------------------------------------------------------------------------- */
 :root {
   color-scheme: dark;
 
-  /* Surfaces */
-  --bg: #0b0d12;
-  --surface: #141821;
-  --surface-2: #1b202b;
-  --surface-3: #232a38;
-  --surface-hover: #20263480;
+  /* Surfaces — deep carbon stack */
+  --bg: #090b10;
+  --surface: #11151e;
+  --surface-2: #171c28;
+  --surface-3: #1f2534;
+  --surface-hover: rgba(229, 169, 60, 0.06);
 
-  /* Accents */
-  --accent: #7c6cff;
-  --accent-strong: #9a8dff;
-  --accent-soft: rgba(124, 108, 255, 0.14);
-  --accent-softer: rgba(124, 108, 255, 0.08);
+  /* Accents — brushed gold */
+  --gold: #e5a93c;
+  --gold-strong: #f2c464;
+  --gold-deep: #b9832a;
+  --gold-soft: rgba(229, 169, 60, 0.14);
+  --gold-softer: rgba(229, 169, 60, 0.08);
+
+  /* Legacy accent aliases (now gold) */
+  --accent: var(--gold);
+  --accent-strong: var(--gold-strong);
+  --accent-soft: var(--gold-soft);
+  --accent-softer: var(--gold-softer);
 
   /* Player identity */
-  --x-color: #7c6cff;
-  --o-color: #39c98a;
+  --x-color: #e5a93c;
+  --o-color: #4dd0c4;
 
   /* Semantic */
   --success: #39c98a;
@@ -32,23 +43,27 @@
   --text-2: #9ca3b4;
   --text-3: #6b7285;
 
-  /* Lines */
+  /* Lines — precise 1px borders */
   --border: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.16);
+  --border-gold: rgba(229, 169, 60, 0.38);
 
   /* Shape & depth */
   --radius-s: 10px;
   --radius-m: 14px;
   --radius-l: 20px;
   --radius-full: 999px;
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35), 0 6px 18px rgba(0, 0, 0, 0.25);
-  --shadow-2: 0 12px 40px rgba(0, 0, 0, 0.45);
-  --ring: 0 0 0 2px var(--bg), 0 0 0 4px rgba(124, 108, 255, 0.75);
+  --shadow-s: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.22);
+  --shadow-m: 0 4px 12px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.32);
+  --shadow-l: 0 12px 40px rgba(0, 0, 0, 0.45);
+  --shadow-gold: 0 4px 18px -6px rgba(229, 169, 60, 0.45);
+  --ring: 0 0 0 2px var(--bg), 0 0 0 4px rgba(229, 169, 60, 0.75);
 
   /* Typography */
   --font:
     "Vazirmatn", "Segoe UI", Tahoma, system-ui, -apple-system, sans-serif;
   --font-num: "Vazirmatn", "SF Mono", ui-monospace, monospace;
+  --font-mono: "SF Mono", "Vazirmatn", ui-monospace, Menlo, Consolas, "Liberation Mono", monospace;
 
   /* Motion */
   --tr-fast: 140ms;
@@ -58,5 +73,6 @@
 
   /* Layout */
   --container: 1040px;
+  --container-wide: 1320px;
   --page-pad: 20px;
 }
