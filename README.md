@@ -20,7 +20,7 @@
 10. [تنظیم RLS](#تنظیم-rls)
 11. [ساخت حساب مدیر](#ساخت-حساب-مدیر)
 12. [اجرای تست‌ها](#اجرای-تست‌ها)
-13. [انتشار روی Cloudflare Pages](#انتشار-روی-cloudflare-pages)
+13. [انتشار روی Cloudflare](#انتشار-روی-cloudflare)
 14. [عیب‌یابی خطاهای رایج](#عیب‌یابی-خطاهای-رایج)
 15. [پشتیبان‌گیری و نگهداری](#پشتیبان‌گیری-و-نگهداری)
 16. [محدودیت‌های شناخته‌شده](#محدودیت‌های-شناخته‌شده)
@@ -41,7 +41,7 @@
 |---|---|
 | Frontend | React 19 + TypeScript + Vite، React Router، lucide-react، CSS خالص با Design Tokens |
 | Backend / DB | Supabase (PostgreSQL 17) — توابع امن `SECURITY DEFINER`، RLS، Realtime Broadcast |
-| هاست | Cloudflare Pages (استاتیک) + Supabase (API/DB/Realtime) |
+| هاست | Cloudflare Workers (استاتیک) + Supabase (API/DB/Realtime) |
 | تست | Vitest + React Testing Library (+ مجموعه تست امنیتی SQL روی پروژه واقعی) |
 | فونت | Vazirmatn — میزبانی محلی، مجوز OFL (`public/fonts/OFL.txt`) |
 
@@ -146,11 +146,15 @@ npm run typecheck   # فقط تایپ‌چک
 
 مجموعه تست امنیتی سطح دیتابیس (کدهای آن در گزارش تحویل پروژه آمده) روی پروژه واقعی اجرا شده و شامل: حرکت با توکن نامعتبر/اتاق دیگر، حرکت خارج از نوبت، خانه پر، حرکت بعد از پایان، انقضا، ظرفیت اتاق، Rate Limit، رد شدن خواندن/نوشتن مستقیم جدول‌ها برای `anon`، توکن جعلی مدیر و ابطال نشست پس از خروج است.
 
-## انتشار روی Cloudflare Pages
+## انتشار روی Cloudflare
 
-### راه ۱ — فرایند جدید Workers (پیش‌فرض فعلی داشبورد)
+این پروژه روی **Cloudflare Workers** (assets-only Worker) منتشر می‌شود؛ پیکربندی `wrangler.jsonc` در ریشه مخزن آماده است.
 
-فایل `wrangler.jsonc` در ریشه مخزن آماده است (assets-only Worker با SPA fallback).
+- **Build:** `npm run build`
+- **Deploy:** `npx wrangler deploy`
+- **SPA fallback:** با `not_found_handling: "single-page-application"` در `wrangler.jsonc` انجام می‌شود؛ فایل `public/_redirects` **نباید** در مخزن وجود داشته باشد (Workers آن را نمی‌پذیرد و به خطای `100324 Infinite loop` می‌انجامد).
+
+### راه ۱ — انتشار از داشبورد Cloudflare (Connect to Git)
 
 1. Workers & Pages → Create → Connect to Git → مخزن `Tik`
 2. فیلدها:
@@ -159,16 +163,20 @@ npm run typecheck   # فقط تایپ‌چک
    - Deploy command: `npx wrangler deploy` (پیش‌فرض)
    - Preview command: `npx wrangler versions upload`
    - Enable Preview builds: روشن — Protect with Cloudflare Access: خاموش
-3. **Advanced settings → Production branch** را روی شاخه‌ای که کد در آن است بگذارید (مثلاً `arena/94a5ec80-tik`) وگرنه از `main` خالی بیلد می‌شود
+3. **Advanced settings → Production branch** را روی `main` بگذارید
 4. **Build variables** (همان‌جا یا بعداً در Settings → Build → Variables and Secrets):
    - `VITE_SUPABASE_URL` · `VITE_SUPABASE_ANON_KEY` · `NODE_VERSION=22`
 5. Deploy → آدرس `https://tik.<account>.workers.dev`
 
-### راه ۲ — Pages کلاسیک (اگر گزینه Pages را دیدید)
+### راه ۲ — انتشار از CLI
 
-Framework preset: **Vite** · Build command: `npm run build` · Output directory: `dist` · متغیرها همان‌ها.
+```bash
+npm ci
+npm run build          # تایپ‌چک + بیلد در dist/
+npx wrangler deploy    # استقرار Worker با assets از dist/
+```
 
-فایل‌های `public/_redirects` (SPA fallback) و `public/_headers` (CSP) در هر دو مسیر از `dist/` سرو می‌شوند.
+فایل `public/_headers` (CSP) از `dist/` سرو می‌شود؛ SPA fallback بر عهده `wrangler.jsonc` است (بدون `_redirects`).
 
 ## عیب‌یابی خطاهای رایج
 
