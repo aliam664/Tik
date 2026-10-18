@@ -633,6 +633,39 @@
   font-weight: 700;
 }
 
+/* ------------------------------ Room mode line ------------------------------ */
+
+.room-mode-line {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.room-mode-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+
+.room-mode-chip--ranked {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--accent-strong);
+  background: var(--accent-softer);
+}
+
+.room-mode-chip--stakes {
+  border-color: color-mix(in srgb, var(--warning) 55%, transparent);
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+
 /* ------------------------------ Admin suite ------------------------------ */
 
 .admin-panel-head {
