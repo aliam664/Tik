@@ -3,6 +3,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { boardFromString, type PlayerSymbol } from "@/game/engine";
 import { api } from "@/lib/api";
 import { ApiError, toUserError } from "@/lib/errors";
+import { env } from "@/lib/env";
 import { playerSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import type { RoomState } from "@/types/api";
@@ -120,18 +121,20 @@ export function useRoomSession({ roomCode, onLeft }: UseRoomSessionOptions) {
       if (aliveRef.current) setInitialLoading(false);
     });
 
-    const channel = openRoomChannel(roomCode, {
-      onState: applyBroadcast,
-      onReady: () => {
-        setRealtimeReady(true);
-        void refresh(false); // resync to cover missed events
-      },
-      onDown: () => setRealtimeReady(false),
-    });
+    const channel = env.isConfigured
+      ? openRoomChannel(roomCode, {
+          onState: applyBroadcast,
+          onReady: () => {
+            setRealtimeReady(true);
+            void refresh(false); // resync to cover missed events
+          },
+          onDown: () => setRealtimeReady(false),
+        })
+      : null;
 
     return () => {
       aliveRef.current = false;
-      void supabase.removeChannel(channel);
+      if (channel) void supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomCode]);

@@ -26,9 +26,29 @@ describe("toUserError", () => {
     expect(res.message).not.toContain("PG::");
   });
 
-  it("does not echo raw SQL-ish messages even inside known code shape", () => {
-    const res = toUserError({ message: "permission denied for table rooms" });
-    expect(res.known).toBe(false);
-    expect(res.message).toBe(GENERIC_ERROR);
+  it("maps a PostgREST missing-RPC code with a migration remedy", () => {
+    const res = toUserError({
+      code: "PGRST202",
+      message: "Could not find the function public.register_player in the schema cache",
+    });
+    expect(res.code).toBe("PGRST202");
+    expect(res.known).toBe(true);
+    expect(res.solution).toContain("مایگریشن");
+    expect(res.message).not.toContain("schema cache");
+  });
+
+  it("reports placeholder environment configuration without leaking raw values", () => {
+    const res = toUserError(new ApiError("ENV_PLACEHOLDER", true));
+    expect(res.code).toBe("ENV_PLACEHOLDER");
+    expect(res.message).toContain("مقدار نمونه");
+    expect(res.solution).toContain("Cloudflare");
+  });
+
+  it("maps permission failures to a safe actionable message", () => {
+    const res = toUserError({ code: "42501", message: "permission denied for table rooms" });
+    expect(res.known).toBe(true);
+    expect(res.code).toBe("42501");
+    expect(res.message).not.toContain("table rooms");
+    expect(res.solution).toContain("GRANT");
   });
 });
