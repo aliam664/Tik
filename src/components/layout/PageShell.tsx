@@ -1,5 +1,6 @@
 import { Link, NavLink } from "react-router-dom";
 import type { ReactNode } from "react";
+import { ConfigurationBanner } from "@/components/ui/ConfigurationBanner";
 
 export function Logo({ compact = false }: { compact?: boolean }) {
   return (
@@ -55,6 +56,7 @@ export function PageShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
+      <ConfigurationBanner />
       <main className="site-main">{children}</main>
 
       <footer className="site-footer">

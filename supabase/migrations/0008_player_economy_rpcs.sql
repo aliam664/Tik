@@ -104,7 +104,7 @@ begin
     v_tier := 'bronze';
   end if;
   -- 4 divisions per tier: thresholds are 200 wide → 50 per division (IV..I)
-  v_div := 4 - least(3, greatest(0, floor(((v_rating mod 200 + 200) mod 200) / 50)::integer));
+  v_div := 4 - least(3, greatest(0, floor(((v_rating % 200 + 200) % 200) / 50)::integer));
   return jsonb_build_object('tier', v_tier, 'division', v_div);
 end;
 $$;

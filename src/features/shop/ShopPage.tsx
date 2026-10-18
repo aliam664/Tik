@@ -6,7 +6,7 @@ import { EmptyState, ErrorState, LoadingSpinner } from "@/components/ui/Feedback
 import { useToast } from "@/components/ui/Toast";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { api } from "@/lib/api";
-import { toUserError } from "@/lib/errors";
+import { toUserError, type UserError } from "@/lib/errors";
 import { toFaDigits } from "@/lib/format";
 import { playerIdentity } from "@/lib/playerSession";
 import type { ShopItem } from "@/types/api";
@@ -32,7 +32,7 @@ export function ShopPage() {
   const [items, setItems] = useState<ShopItem[]>([]);
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<UserError | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
 
   const token = playerIdentity.token();
@@ -48,7 +48,7 @@ export function ShopPage() {
       }
       setError(null);
     } catch (err) {
-      setError(toUserError(err).message);
+      setError(toUserError(err));
     } finally {
       setLoading(false);
     }
@@ -99,7 +99,7 @@ export function ShopPage() {
         {loading ? (
           <LoadingSpinner size={26} label="در حال بارگذاری فروشگاه" />
         ) : error ? (
-          <ErrorState title="خطا در فروشگاه" description={error} onRetry={() => void load()} />
+          <ErrorState title="خطا در فروشگاه" details={error} onRetry={() => void load()} />
         ) : items.length === 0 ? (
           <EmptyState
             title="فروشگاه فعلاً خالی است"

@@ -5,7 +5,7 @@ import { TierBadge } from "@/components/ui/Coin";
 import { EmptyState, ErrorState, LoadingSpinner } from "@/components/ui/Feedback";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { api } from "@/lib/api";
-import { toUserError } from "@/lib/errors";
+import { toUserError, type UserError } from "@/lib/errors";
 import { toFaDigits } from "@/lib/format";
 import type { LeaderboardRow } from "@/types/api";
 
@@ -14,7 +14,7 @@ export function LeaderboardPage() {
   const [rows, setRows] = useState<LeaderboardRow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<UserError | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -24,7 +24,7 @@ export function LeaderboardPage() {
       setTotal(res.total);
       setError(null);
     } catch (err) {
-      setError(toUserError(err).message);
+      setError(toUserError(err));
     } finally {
       setLoading(false);
     }
@@ -54,7 +54,7 @@ export function LeaderboardPage() {
         {loading ? (
           <LoadingSpinner size={26} label="در حال بارگذاری رده‌بندی" />
         ) : error ? (
-          <ErrorState title="خطا در دریافت رده‌بندی" description={error} onRetry={() => void load()} />
+          <ErrorState title="خطا در دریافت رده‌بندی" details={error} onRetry={() => void load()} />
         ) : rows.length === 0 ? (
           <EmptyState
             title="هنوز بازیکنی در جدول نیست"

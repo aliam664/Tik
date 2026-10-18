@@ -13,12 +13,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { CoinAmount, ShCoin, TierBadge } from "@/components/ui/Coin";
-import { LoadingSpinner } from "@/components/ui/Feedback";
+import { ErrorState, LoadingSpinner } from "@/components/ui/Feedback";
 import { FormField, Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { api } from "@/lib/api";
-import { toUserError } from "@/lib/errors";
+import { toUserError, type UserError } from "@/lib/errors";
 import { displayNameError, toFaDigits } from "@/lib/format";
 import { playerIdentity } from "@/lib/playerSession";
 import { playerSession } from "@/lib/session";
@@ -36,12 +36,14 @@ export function PlayPage() {
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileErrorDetails, setProfileErrorDetails] = useState<UserError | null>(null);
 
   /* register / recover */
   const [regName, setRegName] = useState("");
   const [regBusy, setRegBusy] = useState(false);
   const [recoverCode, setRecoverCode] = useState("");
   const [recoverBusy, setRecoverBusy] = useState(false);
+  const [authError, setAuthError] = useState<UserError | null>(null);
 
   /* queue */
   const [mode, setMode] = useState<GameMode>("ranked");
@@ -65,6 +67,7 @@ export function PlayPage() {
       const res = await api.getMyProfile(token);
       setProfile(res.profile);
       setProfileError(null);
+      setProfileErrorDetails(null);
     } catch (err) {
       const user = toUserError(err);
       if (user.code === "PLAYER_UNAUTHORIZED" || user.code === "PLAYER_BANNED") {
@@ -75,8 +78,10 @@ export function PlayPage() {
             ? "حساب شما مسدود شده است."
             : "نشست شما نامعتبر است — دوباره وارد شوید.",
         );
+        setProfileErrorDetails(null);
       } else {
         setProfileError(user.message);
+        setProfileErrorDetails(user);
       }
     } finally {
       setLoadingProfile(false);
@@ -145,6 +150,7 @@ export function PlayPage() {
       showToast(nameErr, "error");
       return;
     }
+    setAuthError(null);
     setRegBusy(true);
     try {
       const res = await api.registerPlayer(regName.trim());
@@ -155,15 +161,19 @@ export function PlayPage() {
         createdAt: res.profile.created_at ?? new Date().toISOString(),
       });
       setProfile(res.profile);
+      setAuthError(null);
       showToast("پروفایل شما ساخته شد! کد بازیابی را حتماً ذخیره کنید.", "success");
     } catch (err) {
-      showToast(toUserError(err).message, "error");
+      const user = toUserError(err);
+      setAuthError(user);
+      showToast(user.message, "error");
     } finally {
       setRegBusy(false);
     }
   };
 
   const recover = async () => {
+    setAuthError(null);
     setRecoverBusy(true);
     try {
       const res = await api.recoverPlayer(recoverCode.trim().toUpperCase());
@@ -174,9 +184,12 @@ export function PlayPage() {
         createdAt: res.profile.created_at ?? new Date().toISOString(),
       });
       setProfile(res.profile);
+      setAuthError(null);
       showToast("حساب شما بازیابی شد! 🎉", "success");
     } catch (err) {
-      showToast(toUserError(err).message, "error");
+      const user = toUserError(err);
+      setAuthError(user);
+      showToast(user.message, "error");
     } finally {
       setRecoverBusy(false);
     }
@@ -304,7 +317,12 @@ export function PlayPage() {
               </Button>
             </div>
           </div>
-          {profileError ? <p className="form-error">{profileError}</p> : null}
+          {profileErrorDetails ? (
+            <ErrorState title="خطا در اتصال به پروفایل" details={profileErrorDetails} onRetry={() => void loadProfile()} />
+          ) : profileError ? (
+            <p className="form-error">{profileError}</p>
+          ) : null}
+          {authError ? <ErrorState title="ساخت یا بازیابی پروفایل ناموفق بود" details={authError} /> : null}
         </section>
       </div>
     );

@@ -18,7 +18,7 @@ import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useCopy } from "@/hooks/useCopy";
 import { api } from "@/lib/api";
 import { tierForRating, tierLabel } from "@/lib/elo";
-import { toUserError } from "@/lib/errors";
+import { toUserError, type UserError } from "@/lib/errors";
 import { formatDateTime, toFaDigits } from "@/lib/format";
 import { playerIdentity } from "@/lib/playerSession";
 import type { MyProfileResponse } from "@/types/api";
@@ -52,6 +52,7 @@ export function ProfilePage() {
   const [data, setData] = useState<MyProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<UserError | null>(null);
   const [showRecovery, setShowRecovery] = useState(false);
 
   const token = playerIdentity.token();
@@ -59,6 +60,7 @@ export function ProfilePage() {
   const load = useCallback(async () => {
     if (!token) {
       setError("ابتدا در بخش «بازی رقابتی» یک پروفایل بسازید.");
+      setErrorDetails(null);
       setLoading(false);
       return;
     }
@@ -67,13 +69,16 @@ export function ProfilePage() {
       const res = await api.getMyProfile(token);
       setData(res);
       setError(null);
+      setErrorDetails(null);
     } catch (err) {
       const user = toUserError(err);
       if (user.code === "PLAYER_UNAUTHORIZED") {
         playerIdentity.clear();
         setError("نشست شما نامعتبر است. دوباره در بخش «بازی رقابتی» وارد شوید.");
+        setErrorDetails(null);
       } else {
         setError(user.message);
+        setErrorDetails(user);
       }
     } finally {
       setLoading(false);
@@ -98,6 +103,7 @@ export function ProfilePage() {
         <ErrorState
           title="پروفایل در دسترس نیست"
           description={error ?? "خطای ناشناخته"}
+          details={errorDetails}
           onRetry={() => void load()}
         />
         <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
