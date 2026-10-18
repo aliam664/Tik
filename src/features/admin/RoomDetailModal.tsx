@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
+import { UserX } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { LoadingSpinner } from "@/components/ui/Feedback";
 import { Modal } from "@/components/ui/Modal";
+import { useToast } from "@/components/ui/Toast";
 import { adminApi } from "@/lib/api";
 import { toUserError } from "@/lib/errors";
 import { formatDateTime, toFaDigits } from "@/lib/format";
@@ -12,14 +15,18 @@ export function RoomDetailModal({
   roomCode,
   onClose,
   onSessionExpired,
+  onUpdated,
 }: {
   token: string;
   roomCode: string | null;
   onClose: () => void;
   onSessionExpired: () => void;
+  onUpdated?: () => void;
 }) {
+  const { showToast } = useToast();
   const [detail, setDetail] = useState<AdminRoomDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [kicking, setKicking] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!roomCode) return;
@@ -40,6 +47,25 @@ export function RoomDetailModal({
   useEffect(() => {
     void load();
   }, [load]);
+
+  const kickSymbol = async (symbol: "X" | "O") => {
+    if (!roomCode) return;
+    setKicking(symbol);
+    try {
+      await adminApi.kickPlayer(token, {
+        roomCode,
+        symbol,
+        reason: `اخراج بازیکن ${symbol} از جزئیات اتاق`,
+      });
+      showToast(`بازیکن ${symbol} اخراج شد.`, "success");
+      await load();
+      onUpdated?.();
+    } catch (err) {
+      showToast(toUserError(err).message, "error");
+    } finally {
+      setKicking(null);
+    }
+  };
 
   const board = detail ? boardFromString(detail.board) : [];
 
@@ -83,10 +109,23 @@ export function RoomDetailModal({
           <h3>بازیکنان</h3>
           <ul className="mini-list">
             {detail.players.map((p) => (
-              <li key={p.symbol}>
-                <strong>{p.symbol === "X" ? "X" : "O"}</strong> — {p.name}{" "}
-                <span className={`presence-dot ${p.connected ? "presence-dot--on" : "presence-dot--off"}`} aria-hidden="true" />
-                <span className="mini-list__meta">آخرین حضور: {formatDateTime(p.last_seen_at)}</span>
+              <li key={p.symbol} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <span>
+                  <strong>{p.symbol === "X" ? "X" : "O"}</strong> — {p.name}{" "}
+                  <span className={`presence-dot ${p.connected ? "presence-dot--on" : "presence-dot--off"}`} aria-hidden="true" />
+                  <span className="mini-list__meta">آخرین حضور: {formatDateTime(p.last_seen_at)}</span>
+                </span>
+                {detail.status === "active" || detail.status === "waiting" ? (
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    loading={kicking === p.symbol}
+                    icon={<UserX size={13} />}
+                    onClick={() => void kickSymbol(p.symbol)}
+                  >
+                    اخراج {p.symbol}
+                  </Button>
+                ) : null}
               </li>
             ))}
           </ul>

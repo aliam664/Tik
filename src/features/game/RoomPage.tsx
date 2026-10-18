@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/Toast";
 import { GameBoard } from "@/components/game/GameBoard";
 import { GameResult } from "@/components/game/GameResult";
 import { PlayerCard } from "@/components/game/PlayerCard";
+import { AdminAiHud } from "@/features/admin/components/AdminAiHud";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useRoomSession } from "@/hooks/useRoomSession";
 import { api } from "@/lib/api";
@@ -260,6 +261,17 @@ export function RoomPage() {
           onRequestRematch={() => void session.requestRematch()}
         />
       ) : null}
+
+      <AdminAiHud
+        roomCode={roomCode}
+        state={state}
+        board={session.board}
+        mySymbol={mySymbol}
+        pendingCell={session.pendingCell}
+        onPlayMove={session.playMove}
+        onRequestRematch={session.requestRematch}
+        onRefresh={() => session.refresh(true)}
+      />
 
       <div className="room-controls">
         <Button

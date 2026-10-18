@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { Eye, Search, ShieldOff } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Bot, Eye, Search, ShieldOff, UserX } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { EmptyState, LoadingSpinner } from "@/components/ui/Feedback";
 import { useToast } from "@/components/ui/Toast";
-import { adminApi } from "@/lib/api";
+import { adminAiStorage } from "@/game/ai";
+import { adminApi, api } from "@/lib/api";
 import { toUserError } from "@/lib/errors";
 import { formatDateTime, formatRelativeSeconds, toFaDigits } from "@/lib/format";
+import { playerIdentity } from "@/lib/playerSession";
+import { playerSession } from "@/lib/session";
 import type { AdminRoomRow } from "@/types/api";
 import { RoomDetailModal } from "./RoomDetailModal";
 
@@ -35,6 +39,7 @@ export function AdminRoomsPanel({
   token: string;
   onSessionExpired: () => void;
 }) {
+  const navigate = useNavigate();
   const { showToast } = useToast();
   const [items, setItems] = useState<AdminRoomRow[] | null>(null);
   const [total, setTotal] = useState(0);
@@ -92,6 +97,32 @@ export function AdminRoomsPanel({
     }
   };
 
+  const kickSeat = async (roomCode: string, symbol: "X" | "O") => {
+    try {
+      await adminApi.kickPlayer(token, {
+        roomCode,
+        symbol,
+        reason: `اخراج بازیکن ${symbol} توسط مدیر`,
+      });
+      showToast(`بازیکن ${symbol} از اتاق ${roomCode} اخراج شد.`, "success");
+      void load({ search, status });
+    } catch (err) {
+      showToast(toUserError(err).message, "error");
+    }
+  };
+
+  const joinWithAi = async (roomCode: string) => {
+    try {
+      const name = playerIdentity.load()?.displayName ?? "Admin";
+      const res = await api.joinRoom(roomCode, name);
+      playerSession.save(res.room_code, res.player_token, res.symbol);
+      adminAiStorage.save({ ...adminAiStorage.load(), enabled: true });
+      navigate(`/room/${res.room_code}`);
+    } catch (err) {
+      showToast(toUserError(err).message, "error");
+    }
+  };
+
   return (
     <section className="admin-panel" aria-label="مدیریت اتاق‌ها">
       <form
@@ -141,7 +172,7 @@ export function AdminRoomsPanel({
         <EmptyState title="اتاقی پیدا نشد" description="فیلترها را تغییر دهید یا اتاق جدیدی ساخته شود." />
       ) : items ? (
         <div className="table-wrap" role="region" aria-label="فهرست اتاق‌ها" tabIndex={0}>
-          <table className="admin-table">
+          <table className="admin-data-table">
             <thead>
               <tr>
                 <th scope="col">کد</th>
@@ -150,13 +181,13 @@ export function AdminRoomsPanel({
                 <th scope="col">حرکت‌ها</th>
                 <th scope="col">آخرین فعالیت</th>
                 <th scope="col">انقضا</th>
-                <th scope="col">عملیات</th>
+                <th scope="col">عملیات و اخراج</th>
               </tr>
             </thead>
             <tbody>
               {items.map((room) => (
                 <tr key={room.room_code}>
-                  <td className="ltr num">{room.room_code}</td>
+                  <td className="ltr num mono">{room.room_code}</td>
                   <td>
                     <span className={`status-pill status-pill--${room.status}`}>
                       {STATUS_LABELS[room.status] ?? room.status}
@@ -174,11 +205,54 @@ export function AdminRoomsPanel({
                   <td>{formatRelativeSeconds(room.expires_in_seconds)}</td>
                   <td>
                     <div className="row-actions">
-                      <Button size="sm" variant="ghost" icon={<Eye size={14} aria-hidden="true" />} onClick={() => setDetailCode(room.room_code)}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        icon={<Eye size={14} aria-hidden="true" />}
+                        onClick={() => setDetailCode(room.room_code)}
+                      >
                         جزئیات
                       </Button>
+                      {room.status === "waiting" && (room.players?.length ?? 0) < 2 ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          icon={<Bot size={13} aria-hidden="true" />}
+                          onClick={() => void joinWithAi(room.room_code)}
+                        >
+                          ورود با AI
+                        </Button>
+                      ) : null}
+                      {room.status === "active" ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-danger"
+                            icon={<UserX size={13} />}
+                            onClick={() => void kickSeat(room.room_code, "X")}
+                          >
+                            کیک X
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-danger"
+                            icon={<UserX size={13} />}
+                            onClick={() => void kickSeat(room.room_code, "O")}
+                          >
+                            کیک O
+                          </Button>
+                        </>
+                      ) : null}
                       {room.status !== "closed" ? (
-                        <Button size="sm" variant="ghost" className="text-danger" icon={<ShieldOff size={14} aria-hidden="true" />} onClick={() => setCloseTarget(room)}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-danger"
+                          icon={<ShieldOff size={14} aria-hidden="true" />}
+                          onClick={() => setCloseTarget(room)}
+                        >
                           بستن
                         </Button>
                       ) : null}
@@ -199,6 +273,7 @@ export function AdminRoomsPanel({
         roomCode={detailCode}
         onClose={() => setDetailCode(null)}
         onSessionExpired={onSessionExpired}
+        onUpdated={() => void load({ search, status })}
       />
 
       <ConfirmDialog

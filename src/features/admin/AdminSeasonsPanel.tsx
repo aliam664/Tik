@@ -108,35 +108,45 @@ export function AdminSeasonsPanel({
       ) : seasons.length === 0 ? (
         <p className="card__sub">هنوز فصلی ساخته نشده است. با «فصل جدید» اولین فصل را بسازید.</p>
       ) : (
-        <div className="admin-table">
-          <div className="admin-table__row admin-table__row--head">
-            <span>نام</span>
-            <span>شروع</span>
-            <span>پایان</span>
-            <span>وضعیت</span>
-            <span />
-          </div>
-          {seasons.map((s) => (
-            <div key={String(s.id)} className="admin-table__row">
-              <span>{String(s.name)}</span>
-              <span>{formatDateTime(String(s.starts_at))}</span>
-              <span>{formatDateTime(String(s.ends_at))}</span>
-              <span>{STATUS_LABELS[String(s.status)] ?? String(s.status)}</span>
-              <span>
-                {s.status !== "finished" ? (
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    icon={<StopCircle size={13} />}
-                    loading={busy}
-                    onClick={() => void end(String(s.id))}
-                  >
-                    پایان فصل + جوایز + ریست نرم
-                  </Button>
-                ) : null}
-              </span>
-            </div>
-          ))}
+        <div className="table-wrap">
+          <table className="admin-data-table">
+            <thead>
+              <tr>
+                <th scope="col">نام فصل</th>
+                <th scope="col">تاریخ شروع</th>
+                <th scope="col">تاریخ پایان</th>
+                <th scope="col">وضعیت</th>
+                <th scope="col">عملیات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {seasons.map((s) => (
+                <tr key={String(s.id)}>
+                  <td>
+                    <strong>{String(s.name)}</strong>
+                  </td>
+                  <td>{formatDateTime(String(s.starts_at))}</td>
+                  <td>{formatDateTime(String(s.ends_at))}</td>
+                  <td>{STATUS_LABELS[String(s.status)] ?? String(s.status)}</td>
+                  <td>
+                    {s.status !== "finished" ? (
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        icon={<StopCircle size={13} />}
+                        loading={busy}
+                        onClick={() => void end(String(s.id))}
+                      >
+                        پایان فصل + جوایز + ریست نرم
+                      </Button>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
