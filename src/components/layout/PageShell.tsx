@@ -1,6 +1,9 @@
 import { Link, NavLink } from "react-router-dom";
 import type { ReactNode } from "react";
+import { Shield } from "lucide-react";
 import { ConfigurationBanner } from "@/components/ui/ConfigurationBanner";
+import { MAIN_NAV_ITEMS } from "@/config/navigation";
+import { adminSession } from "@/lib/session";
 
 export function Logo({ compact = false }: { compact?: boolean }) {
   return (
@@ -19,29 +22,31 @@ export function Logo({ compact = false }: { compact?: boolean }) {
 }
 
 export function ResponsiveNavigation() {
+  const isAdmin = adminSession.load() !== null;
+
   return (
     <nav className="main-nav" aria-label="ناوبری اصلی">
-      <NavLink to="/" end className={({ isActive }) => `main-nav__link ${isActive ? "main-nav__link--active" : ""}`}>
-        خانه
-      </NavLink>
-      <NavLink to="/play" className={({ isActive }) => `main-nav__link ${isActive ? "main-nav__link--active" : ""}`}>
-        بازی رقابتی
-      </NavLink>
-      <NavLink to="/leaderboard" className={({ isActive }) => `main-nav__link ${isActive ? "main-nav__link--active" : ""}`}>
-        رده‌بندی
-      </NavLink>
-      <NavLink to="/shop" className={({ isActive }) => `main-nav__link ${isActive ? "main-nav__link--active" : ""}`}>
-        فروشگاه
-      </NavLink>
-      <NavLink to="/profile" className={({ isActive }) => `main-nav__link ${isActive ? "main-nav__link--active" : ""}`}>
-        پروفایل
-      </NavLink>
-      <NavLink to="/rules" className={({ isActive }) => `main-nav__link ${isActive ? "main-nav__link--active" : ""}`}>
-        قوانین
-      </NavLink>
-      <NavLink to="/join" className={({ isActive }) => `main-nav__link ${isActive ? "main-nav__link--active" : ""}`}>
-        ورود به اتاق
-      </NavLink>
+      {MAIN_NAV_ITEMS.map((item) => (
+        <NavLink
+          key={item.path}
+          to={item.path}
+          end={item.exact}
+          className={({ isActive }) => `main-nav__link ${isActive ? "main-nav__link--active" : ""}`}
+        >
+          {item.label}
+        </NavLink>
+      ))}
+      {isAdmin ? (
+        <NavLink
+          to="/admin"
+          className={({ isActive }) =>
+            `main-nav__link main-nav__link--admin ${isActive ? "main-nav__link--active" : ""}`
+          }
+        >
+          <Shield size={14} aria-hidden="true" />
+          پنل ادمین
+        </NavLink>
+      ) : null}
     </nav>
   );
 }
@@ -67,6 +72,7 @@ export function PageShell({ children }: { children: ReactNode }) {
           <nav className="site-footer__links" aria-label="پیوندهای پایین صفحه">
             <Link to="/rules">قوانین بازی</Link>
             <Link to="/privacy">حریم خصوصی</Link>
+            <Link to="/admin">مدیریت</Link>
           </nav>
           <p className="site-footer__copy">
             ساخته‌شده با React و Supabase — تمام حرکت‌ها روی سرور اعتبارسنجی می‌شوند.

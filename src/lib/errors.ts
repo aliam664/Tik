@@ -39,7 +39,14 @@ export type ServerErrorCode =
   | "STAKES_BANNED"
   | "MODE_DISABLED"
   | "NO_ACTIVE_MATCH"
-  | "WALLET_FROZEN";
+  | "WALLET_FROZEN"
+  | "REASON_REQUIRED"
+  | "INVALID_AMOUNT"
+  | "PLAYER_NOT_FOUND"
+  | "INVALID_SCOPE"
+  | "INVALID_DURATION"
+  | "INVALID_RECOVERY_CODE"
+  | "INVALID_MODE";
 
 export interface UserError {
   message: string;
@@ -98,6 +105,13 @@ export const ERROR_MESSAGES: Record<string, string> = {
   MODE_DISABLED: "این حالت بازی فعلاً غیرفعال است.",
   NO_ACTIVE_MATCH: "مسابقه فعالی برای این حساب پیدا نشد.",
   WALLET_FROZEN: "کیف پول شما موقتاً قفل شده است.",
+  REASON_REQUIRED: "ثبت دلیل برای این عملیات مدیریتی الزامی است.",
+  INVALID_AMOUNT: "مقدار واردشده معتبر نیست.",
+  PLAYER_NOT_FOUND: "بازیکن مورد نظر پیدا نشد.",
+  INVALID_SCOPE: "محدوده مسدودسازی معتبر نیست.",
+  INVALID_DURATION: "مدت زمان مسدودسازی معتبر نیست.",
+  INVALID_RECOVERY_CODE: "کد بازیابی ۱۲ نویسه‌ای معتبر نیست.",
+  INVALID_MODE: "حالت بازی انتخاب‌شده معتبر نیست.",
 };
 
 export const GENERIC_ERROR = "خطایی رخ داد. لطفاً دوباره تلاش کنید.";
