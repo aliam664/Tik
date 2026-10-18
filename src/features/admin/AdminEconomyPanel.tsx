@@ -177,7 +177,7 @@ export function AdminEconomyPanel({
           </Button>
         </div>
 
-        {Boolean(data.inflation_alert) ? (
+        {data.inflation_alert ? (
           <div className="econ-alert">
             <AlertTriangle size={18} aria-hidden="true" />
             <span>هشدار تورم: خالص تزریق سکه در ۲۴ ساعت اخیر بیش از ۲۰٪ عرضه کل است.</span>

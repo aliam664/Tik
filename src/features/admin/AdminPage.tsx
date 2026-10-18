@@ -25,6 +25,7 @@ import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { adminApi } from "@/lib/api";
 import { toUserError } from "@/lib/errors";
 import { adminSession } from "@/lib/session";
+import { DesignerBadge } from "@/components/layout/PageShell";
 import { AdminOverviewPanel } from "./AdminOverviewPanel";
 import { AdminSystemPanel } from "./AdminSystemPanel";
 import { AdminArenaPanel } from "./AdminArenaPanel";
@@ -178,7 +179,7 @@ export function AdminPage() {
 
   if (!session) {
     return (
-      <div className="admin-login-wrap">
+      <div className="page page--narrow admin-login-wrap">
         <form className="card admin-login" onSubmit={(e) => void handleLogin(e)} noValidate>
           <div className="admin-login__head">
             <span className="admin-login__icon" aria-hidden="true">
@@ -223,7 +224,7 @@ export function AdminPage() {
   }
 
   return (
-    <div className="admin-layout">
+    <div className="page admin-page admin-layout">
       <header className="admin-bar">
         <div className="admin-bar__title">
           <Shield size={20} aria-hidden="true" />
@@ -234,6 +235,7 @@ export function AdminPage() {
             </p>
           </div>
         </div>
+        <DesignerBadge />
         <div className="admin-bar__actions">
           <Button
             variant={tab === "arena" ? "primary" : "secondary"}

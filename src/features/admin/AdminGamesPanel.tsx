@@ -129,9 +129,9 @@ export function AdminGamesPanel({
                       X: {String(m.player_x_name ?? "—")} — O: {String(m.player_o_name ?? "—")}
                     </td>
                     <td>
-                      {Boolean(m.is_draw)
+                      {m.is_draw
                         ? "مساوی"
-                        : `برد ${String(m.winner_symbol)}${Boolean(m.forfeit) ? " (فنی)" : ""}`}
+                        : `برد ${String(m.winner_symbol)}${m.forfeit ? " (فنی)" : ""}`}
                     </td>
                     <td className="ltr num">
                       {String(m.rating_x_before ?? "—")}→{String(m.rating_x_after ?? "—")} /{" "}
