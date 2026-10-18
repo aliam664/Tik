@@ -148,14 +148,27 @@ npm run typecheck   # فقط تایپ‌چک
 
 ## انتشار روی Cloudflare Pages
 
-1. مخزن را به GitHub بدهید.
-2. در Cloudflare → **Workers & Pages → Create → Pages → Connect to Git**.
-3. تنظیمات Build:
-   - Framework preset: **Vite**
+### راه ۱ — فرایند جدید Workers (پیش‌فرض فعلی داشبورد)
+
+فایل `wrangler.jsonc` در ریشه مخزن آماده است (assets-only Worker با SPA fallback).
+
+1. Workers & Pages → Create → Connect to Git → مخزن `Tik`
+2. فیلدها:
+   - Project name: `tik` (باید با `name` داخل `wrangler.jsonc` یکی باشد)
    - Build command: `npm run build`
-   - Output directory: `dist`
-4. در **Environment variables** دو متغیر `VITE_SUPABASE_URL` و `VITE_SUPABASE_ANON_KEY` را تنظیم کنید.
-5. Deploy. فایل‌های `public/_redirects` (SPA fallback) و `public/_headers` (CSP و هدرهای امنیتی) خودکار اعمال می‌شوند.
+   - Deploy command: `npx wrangler deploy` (پیش‌فرض)
+   - Preview command: `npx wrangler versions upload`
+   - Enable Preview builds: روشن — Protect with Cloudflare Access: خاموش
+3. **Advanced settings → Production branch** را روی شاخه‌ای که کد در آن است بگذارید (مثلاً `arena/94a5ec80-tik`) وگرنه از `main` خالی بیلد می‌شود
+4. **Build variables** (همان‌جا یا بعداً در Settings → Build → Variables and Secrets):
+   - `VITE_SUPABASE_URL` · `VITE_SUPABASE_ANON_KEY` · `NODE_VERSION=22`
+5. Deploy → آدرس `https://tik.<account>.workers.dev`
+
+### راه ۲ — Pages کلاسیک (اگر گزینه Pages را دیدید)
+
+Framework preset: **Vite** · Build command: `npm run build` · Output directory: `dist` · متغیرها همان‌ها.
+
+فایل‌های `public/_redirects` (SPA fallback) و `public/_headers` (CSP) در هر دو مسیر از `dist/` سرو می‌شوند.
 
 ## عیب‌یابی خطاهای رایج
 
