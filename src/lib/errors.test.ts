@@ -51,4 +51,24 @@ describe("toUserError", () => {
     expect(res.message).not.toContain("table rooms");
     expect(res.solution).toContain("GRANT");
   });
+
+  it("maps request timeouts to an actionable diagnostic", () => {
+    const res = toUserError({ name: "AbortError", message: "Request timed out" });
+    expect(res.code).toBe("TIMEOUT");
+    expect(res.message).toContain("طول کشید");
+    expect(res.solution).toContain("دیتابیس");
+  });
+
+  it("recognizes a missing function even when PostgREST omitted its code", () => {
+    const res = toUserError({ message: "Function public.get_public_status does not exist" });
+    expect(res.code).toBe("PGRST202");
+    expect(res.solution).toContain("schema cache");
+  });
+
+  it("preserves unknown PostgREST codes without showing technical response text", () => {
+    const res = toUserError({ code: "PGRST204", message: "internal details: secret table name" });
+    expect(res.code).toBe("PGRST204");
+    expect(res.message).toBe(GENERIC_ERROR);
+    expect(res.message).not.toContain("secret table name");
+  });
 });
