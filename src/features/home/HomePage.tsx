@@ -202,6 +202,14 @@ export function HomePage() {
             >
               بازی رقابتی و شرط
             </Button>
+            <Button
+              size="lg"
+              variant="secondary"
+              icon={<Rocket size={18} aria-hidden="true" />}
+              onClick={() => navigate("/games/last-night")}
+            >
+              Last Night — بقای قرون‌وسطایی
+            </Button>
           </div>
 
           <div className="hero__status" aria-live="polite">
@@ -221,12 +229,13 @@ export function HomePage() {
             <div className="note-card">
               <ShCoin size={22} />
               <div>
-                <h2 className="note-card__title">شریف‌کوین و رنکینگ حرفه‌ای</h2>
+                <h2 className="note-card__title">شریف‌کوین (Sheriff Coin) و اقتصاد یکپارچه</h2>
                 <p className="note-card__text">
-                  در بخش <Link className="link" to="/play">بازی رقابتی</Link> با حریف
-                  هم‌سطح بازی کن، امتیاز رنک بگیر و شریف‌کوین (sh) جمع کن.{" "}
+                  در بخش <Link className="link" to="/play">دوز رقابتی</Link> و کمپین{" "}
+                  <Link className="link" to="/games/last-night">Last Night — Medieval Survival</Link>{" "}
+                  بازی کن و <strong>Sheriff Coin</strong> جمع کن.{" "}
                   <Link className="link" to="/leaderboard">جدول رده‌بندی</Link> و{" "}
-                  <Link className="link" to="/shop">فروشگاه آرایشی</Link> را هم ببین.
+                  <Link className="link" to="/shop">فروشگاه</Link> را هم ببین.
                 </p>
               </div>
             </div>

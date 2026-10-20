@@ -56,24 +56,29 @@ export const PLATFORM_GAMES: readonly PlatformGame[] = [
     engine: "Server-authoritative",
     accent: "#e5a93c",
     icon: "grid",
-    features: ["اتاق خصوصی", "رنکینگ Elo", "شرط‌بندی sh"],
+    features: ["اتاق خصوصی", "رنکینگ Elo", "Sheriff Coin"],
   },
   {
-    id: "arena2d",
-    title: "آرنا ۲بعدی",
-    titleEn: "ARENA 2D",
-    tagline: "موتور بازی ۲بعدی سنگین با حلقه ۶۰ فریم ثابت",
+    id: "last_night",
+    title: "Last Night — بقای قرون‌وسطایی",
+    titleEn: "LAST NIGHT — MEDIEVAL SURVIVAL",
+    tagline: "کمپین آنلاین ۲ نفره پیکسل‌آرت در ۴ نقشه، ۱۰ موج، ۶ سلاح و ۶ کتاب جادو",
     description:
-      "عنوان بعدی پلتفرم: موتور Canvas 2D با حلقه بازی قطعی ۶۰ هرتز، درونیابی رندر و محافظت از افت فریم — در دست توسعه.",
-    status: "coming_soon",
-    route: "/games/arena2d",
-    players: "۱–۴ نفره",
-    genre: "اکشن / realtime",
+      "بقای قرون‌وسطایی و فانتزی تاریک ۲بعدی از بالا (Top-Down Pixel Art): دهکده نفرین‌شده، جنگل تاریک، جنگل برفی و دخمه‌های باستانی به همراه خزانه مشترک Sheriff Coin، آهنگری، حداکثر ۲ کتاب جادوی هم‌زمان و ۳ غول چندفازی.",
+    status: "live",
+    route: "/games/last-night",
+    players: "۲ نفره آنلاین (Co-op)",
+    genre: "بقای قرون‌وسطایی / Pixel Art",
     frameRate: 60,
-    engine: "Canvas 2D · Fixed-Timestep",
-    accent: "#4dd0c4",
+    engine: "Canvas 2D Pixel-Art · Server-Authoritative",
+    accent: "#f59e0b",
     icon: "rocket",
-    features: ["۶۰ FPS", "Fixed-Timestep 60Hz", "درونیابی رندر"],
+    features: [
+      "کمپین ۱۰ موجی ۲ نفره",
+      "۶ سلاح + ۶ کتاب جادو",
+      "خزانه مشترک Sheriff Coin",
+      "۳ غول بزرگ چندفازی",
+    ],
   },
 ] as const;
 
@@ -81,6 +86,9 @@ export const PLATFORM_GAMES: readonly PlatformGame[] = [
 export function getGameById(id: string): PlatformGame | undefined {
   const needle = id.trim().toLowerCase();
   if (!needle) return undefined;
+  if (needle === "arena2d") {
+    return PLATFORM_GAMES.find((g) => g.id === "last_night");
+  }
   return PLATFORM_GAMES.find((g) => g.id === needle);
 }
 

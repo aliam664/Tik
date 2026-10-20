@@ -11,9 +11,10 @@ export interface SiteNavItem {
 
 export const MAIN_NAV_ITEMS: readonly SiteNavItem[] = [
   { path: "/", label: "خانه", exact: true },
-  { path: "/play", label: "بازی رقابتی" },
+  { path: "/games/last-night", label: "Last Night (بقای قرون‌وسطایی)" },
+  { path: "/play", label: "دوز رقابتی" },
   { path: "/leaderboard", label: "رده‌بندی" },
-  { path: "/shop", label: "فروشگاه" },
+  { path: "/shop", label: "فروشگاه (Sheriff Coin)" },
   { path: "/profile", label: "پروفایل" },
   { path: "/rules", label: "قوانین" },
   { path: "/join", label: "ورود به اتاق" },

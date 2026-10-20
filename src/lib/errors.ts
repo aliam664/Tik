@@ -46,7 +46,12 @@ export type ServerErrorCode =
   | "INVALID_SCOPE"
   | "INVALID_DURATION"
   | "INVALID_RECOVERY_CODE"
-  | "INVALID_MODE";
+  | "INVALID_MODE"
+  | "SPELL_ON_COOLDOWN"
+  | "ITEM_ON_COOLDOWN"
+  | "INSUFFICIENT_MANA"
+  | "MAX_TWO_SPELLBOOKS"
+  | "KEY_REQUIRED";
 
 export interface UserError {
   message: string;
@@ -112,6 +117,11 @@ export const ERROR_MESSAGES: Record<string, string> = {
   INVALID_DURATION: "مدت زمان مسدودسازی معتبر نیست.",
   INVALID_RECOVERY_CODE: "کد بازیابی ۱۲ نویسه‌ای معتبر نیست.",
   INVALID_MODE: "حالت بازی انتخاب‌شده معتبر نیست.",
+  SPELL_ON_COOLDOWN: "این طلسم هنوز در زمان استراحت (کول‌داون) است.",
+  ITEM_ON_COOLDOWN: "این آیتم مصرفی هنوز در زمان استراحت است.",
+  INSUFFICIENT_MANA: "مانای شما برای اجرای این کتاب جادو کافی نیست.",
+  MAX_TWO_SPELLBOOKS: "حداکثر ۲ کتاب جادو را می‌توانید هم‌زمان تجهیز کنید.",
+  KEY_REQUIRED: "برای باز کردن این صندوقچه قفل‌شده به کلید زنگ‌زده (Rusty key) نیاز دارید.",
 };
 
 export const GENERIC_ERROR = "خطایی رخ داد. لطفاً دوباره تلاش کنید.";
@@ -250,3 +260,9 @@ export function toUserError(err: unknown): UserError {
 
   return resultForCode("UNKNOWN", false);
 }
+
+/** Convenience helper returning the Persian user-facing error message string. */
+export function getErrorMessage(err: unknown): string {
+  return toUserError(err).message;
+}
+
