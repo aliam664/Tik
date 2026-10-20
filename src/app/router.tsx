@@ -36,6 +36,16 @@ const LeaderboardPage = lazy(() =>
 const ShopPage = lazy(() =>
   import("@/features/shop/ShopPage").then((m) => ({ default: m.ShopPage })),
 );
+const LastNightLobbyPage = lazy(() =>
+  import("@/features/lastNight/LastNightLobbyPage").then((m) => ({
+    default: m.LastNightLobbyPage,
+  })),
+);
+const LastNightRoomPage = lazy(() =>
+  import("@/features/lastNight/LastNightRoomPage").then((m) => ({
+    default: m.LastNightRoomPage,
+  })),
+);
 
 function RouteFallback() {
   return (
@@ -61,6 +71,9 @@ export function AppRouter() {
           <Route path="/rules" element={<RulesPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/admin" element={<AdminPage />} />
+          <Route path="/games/last-night" element={<LastNightLobbyPage />} />
+          <Route path="/games/last-night/room/:roomCode" element={<LastNightRoomPage />} />
+          <Route path="/games/arena2d" element={<LastNightLobbyPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

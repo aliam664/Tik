@@ -87,10 +87,12 @@ export function ShopPage() {
         <div className="lb-head">
           <div>
             <h1 className="card__title">
-              <ShoppingBag size={22} aria-hidden="true" /> فروشگاه آرایشی
+              <ShoppingBag size={22} aria-hidden="true" /> فروشگاه و خزانه Sheriff Coin
             </h1>
             <p className="card__sub">
-              همه آیتم‌ها فقط جنبه ظاهری دارند و هیچ برتری در بازی ایجاد نمی‌کنند.
+              موجودی کیف پول رسمی شما با نام <strong>Sheriff Coin</strong> در هر دو بازی{" "}
+              <strong>دوز کلاسیک</strong> و{" "}
+              <strong>Last Night — Medieval Survival</strong> یکپارچه است.
             </p>
           </div>
           {balance !== null ? <CoinAmount amount={balance} size={22} /> : null}
