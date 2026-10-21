@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Megaphone, Plus, Save, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input } from "@/components/ui/Input";
-import { LoadingSpinner } from "@/components/ui/Feedback";
+import { ErrorState, LoadingSpinner } from "@/components/ui/Feedback";
 import { useToast } from "@/components/ui/Toast";
 import { adminApi } from "@/lib/api";
 import { toUserError } from "@/lib/errors";
@@ -18,6 +18,9 @@ export function AdminSettingsPanel({
 }) {
   const { showToast } = useToast();
   const [settings, setSettings] = useState<PlatformSettings | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [staffError, setStaffError] = useState<string | null>(null);
   const [staff, setStaff] = useState<
     { id: string; username: string; role: string; is_active: boolean; created_at: string }[]
   >([]);
@@ -35,25 +38,44 @@ export function AdminSettingsPanel({
   const [annHours, setAnnHours] = useState("24");
 
   const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
     try {
-      const [s, admins] = await Promise.all([
+      const [settingsResult, adminsResult] = await Promise.allSettled([
         adminApi.getSettings(token),
-        adminApi.listAdmins(token).catch(() => []),
+        adminApi.listAdmins(token),
       ]);
+      if (settingsResult.status === "rejected") throw settingsResult.reason;
+
+      const s = settingsResult.value;
       setSettings(s);
-      setStaff(admins);
       setTtlHours(String(s.room_ttl_hours));
       setMaxRooms(String(s.max_rooms_per_ip_per_hour));
       setMaxJoins(String(s.max_joins_per_ip_per_hour));
       setMaintenanceMode(s.maintenance_mode);
       setMaintenanceMessage(s.maintenance_message ?? "");
+
+      if (adminsResult.status === "fulfilled") {
+        setStaff(adminsResult.value);
+        setStaffError(null);
+      } else {
+        const user = toUserError(adminsResult.reason);
+        if (user.code === "ADMIN_UNAUTHORIZED") {
+          onSessionExpired();
+          return;
+        }
+        setStaffError(user.code === "ADMIN_FORBIDDEN" ? "نمایش فهرست مدیران به دسترسی RBAC نیاز دارد." : user.message);
+      }
     } catch (err) {
       const user = toUserError(err);
       if (user.code === "ADMIN_UNAUTHORIZED") {
         onSessionExpired();
         return;
       }
+      setLoadError(user.message);
       showToast(user.message, "error");
+    } finally {
+      setLoading(false);
     }
   }, [onSessionExpired, showToast, token]);
 
@@ -114,19 +136,36 @@ export function AdminSettingsPanel({
       setAnnBody("");
       showToast("اطلاعیه سراسری منتشر شد.", "success");
     } catch (err) {
-      showToast(toUserError(err).message, "error");
+      const user = toUserError(err);
+      if (user.code === "ADMIN_UNAUTHORIZED") {
+        onSessionExpired();
+        return;
+      }
+      showToast(user.message, "error");
     } finally {
       setSaving(false);
     }
   };
 
-  if (!settings) {
+  if (loading && !settings) {
     return (
       <div className="room-loading">
         <LoadingSpinner size={24} label="دریافت تنظیمات" />
       </div>
     );
   }
+
+  if (loadError && !settings) {
+    return (
+      <ErrorState
+        title="خطا در دریافت تنظیمات"
+        description={loadError}
+        onRetry={() => void load()}
+      />
+    );
+  }
+
+  if (!settings) return null;
 
   return (
     <section className="admin-panel" aria-label="تنظیمات سامانه">
@@ -204,11 +243,11 @@ export function AdminSettingsPanel({
         <FormField
           label="پیام حالت نگهداری (اختیاری)"
           htmlFor="maint-msg"
-          hint="در صورت فعال بودن حالت نگهداری نمایش داده می‌شود."
+          hint="در صورت فعال بودن حالت نگهداری نمایش داده می‌شود (حداکثر ۲۰۰ نویسه)."
         >
           <Input
             id="maint-msg"
-            maxLength={240}
+            maxLength={200}
             value={maintenanceMessage}
             onChange={(e) => setMaintenanceMessage(e.target.value)}
             placeholder="سامانه در حال به‌روزرسانی است…"
@@ -272,7 +311,9 @@ export function AdminSettingsPanel({
       </div>
 
       {/* Staff / RBAC Overview */}
-      {staff.length > 0 ? (
+      {staffError ? (
+        <p className="inline-warning" role="status">{staffError}</p>
+      ) : staff.length > 0 ? (
         <div className="card" style={{ marginTop: 16 }}>
           <h3 className="sys-card__title">
             <ShieldCheck size={17} aria-hidden="true" /> مدیران و سطح دسترسی (RBAC)

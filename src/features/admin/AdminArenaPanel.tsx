@@ -61,6 +61,9 @@ export function AdminArenaPanel({
   const [displayName, setDisplayName] = useState(() => playerIdentity.load()?.displayName ?? "Admin_Master");
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [profileBusy, setProfileBusy] = useState(false);
+  const [profileSetupRequired, setProfileSetupRequired] = useState(false);
+  const [legacyPlayerToken, setLegacyPlayerToken] = useState("");
+  const [legacyRecoveryCode, setLegacyRecoveryCode] = useState("");
 
   /* AI configuration */
   const [aiSettings, setAiSettings] = useState<AdminAiSettings>(() => adminAiStorage.load());
@@ -80,6 +83,7 @@ export function AdminArenaPanel({
 
   const pollRef = useRef<number | null>(null);
   const acceptingRef = useRef(false);
+  const profileSyncInFlightRef = useRef(false);
 
   const updateAi = (patch: Partial<AdminAiSettings>) => {
     setAiSettings((prev) => {
@@ -91,31 +95,60 @@ export function AdminArenaPanel({
 
   /* ---------------- Load or initialize Admin Champion Profile ---------------- */
   const syncAdminProfile = useCallback(
-    async (customName?: string) => {
+    async (
+      customName?: string,
+      legacyCredentials?: { token: string; recoveryCode: string },
+    ) => {
+      if (profileSyncInFlightRef.current) return;
+      profileSyncInFlightRef.current = true;
       setProfileBusy(true);
       try {
         const stored = playerIdentity.load();
         const res = await adminApi.ensureProfile(
           token,
           customName?.trim() || stored?.displayName || displayName,
-          stored?.token ?? null,
+          legacyCredentials?.token ?? stored?.token ?? null,
+          legacyCredentials?.recoveryCode ?? stored?.recoveryCode ?? null,
         );
         playerIdentity.save({
           token: res.player_token,
           displayName: res.profile.display_name,
-          recoveryCode: res.recovery_code ?? stored?.recoveryCode ?? "ADMIN-PRO-KEY",
+          recoveryCode:
+            res.recovery_code ??
+            (legacyCredentials?.token.trim()
+              ? stored?.recoveryCode ?? ""
+              : legacyCredentials?.recoveryCode ?? stored?.recoveryCode ?? ""),
           createdAt: res.profile.created_at ?? new Date().toISOString(),
         });
         setProfile(res.profile);
         setDisplayName(res.profile.display_name);
+        setProfileSetupRequired(false);
+        setLegacyPlayerToken("");
+        setLegacyRecoveryCode("");
       } catch (err) {
         const user = toUserError(err);
         if (user.code === "ADMIN_UNAUTHORIZED") {
           onSessionExpired();
           return;
         }
+        if (
+          user.code === "ADMIN_PROFILE_SETUP_REQUIRED" ||
+          user.code === "INVALID_RECOVERY_CODE"
+        ) {
+          setProfile(null);
+          setProfileSetupRequired(true);
+          if (!legacyCredentials) {
+            const stored = playerIdentity.load();
+            setLegacyPlayerToken(stored?.token ?? "");
+            setLegacyRecoveryCode(stored?.recoveryCode ?? "");
+          }
+        } else if (user.code === "PLAYER_BANNED" || user.code === "WALLET_FROZEN") {
+          setProfile(null);
+          setProfileSetupRequired(false);
+        }
         showToast(user.message, "error");
       } finally {
+        profileSyncInFlightRef.current = false;
         setLoadingProfile(false);
         setProfileBusy(false);
       }
@@ -128,12 +161,17 @@ export function AdminArenaPanel({
     try {
       const res = await adminApi.listRooms(token, { status: "waiting", limit: 20 });
       setWaitingRooms(res.items);
-    } catch {
-      /* ignore */
+    } catch (err) {
+      const user = toUserError(err);
+      if (user.code === "ADMIN_UNAUTHORIZED") {
+        onSessionExpired();
+      } else {
+        showToast(user.message, "error");
+      }
     } finally {
       setRoomsLoading(false);
     }
-  }, [token]);
+  }, [onSessionExpired, showToast, token]);
 
   useEffect(() => {
     void syncAdminProfile();
@@ -212,6 +250,10 @@ export function AdminArenaPanel({
   }, [acceptMatch, autoAccept, stopPolling]);
 
   const startQueue = async () => {
+    if (!profile) {
+      if (!profileSetupRequired) await syncAdminProfile();
+      return;
+    }
     const pToken = playerIdentity.token();
     if (!pToken) {
       await syncAdminProfile();
@@ -234,7 +276,12 @@ export function AdminArenaPanel({
         void pollQueue();
       }
     } catch (err) {
-      showToast(toUserError(err).message, "error");
+      const user = toUserError(err);
+      if (user.code === "ADMIN_UNAUTHORIZED") {
+        onSessionExpired();
+        return;
+      }
+      showToast(user.message, "error");
     } finally {
       setQueueBusy(false);
     }
@@ -297,7 +344,12 @@ export function AdminArenaPanel({
       await syncAdminProfile();
       showToast("حساب بازی ادمین ارتقا یافت.", "success");
     } catch (err) {
-      showToast(toUserError(err).message, "error");
+      const user = toUserError(err);
+      if (user.code === "ADMIN_UNAUTHORIZED") {
+        onSessionExpired();
+        return;
+      }
+      showToast(user.message, "error");
     } finally {
       setProfileBusy(false);
     }
@@ -376,6 +428,55 @@ export function AdminArenaPanel({
             </div>
           ) : null}
         </div>
+
+        {profileSetupRequired ? (
+          <div className="arena-name-bar" role="group" aria-label="پیوند امن پروفایل قدیمی ادمین">
+            <p className="card__sub" role="alert" style={{ flexBasis: "100%", margin: 0 }}>
+              برای جلوگیری از ساخت پروفایل جایگزین و دورزدن محدودیت‌های حساب، پیوند اولیه پروفایل قدیمی فقط با توکن و کد بازیابی همان حساب انجام می‌شود. اگر پروفایل قبلاً پیوند خورده و توکن این دستگاه را ندارید، کد بازیابی به‌تنهایی توکن تازه صادر می‌کند. حساب مسدود یا کیف پول قفل‌شده از هیچ‌یک از این مسیرها عبور نمی‌کند.
+            </p>
+            <FormField
+              label="توکن پروفایل قدیمی"
+              htmlFor="admin-legacy-player-token"
+              hint="برای پیوند اولیه الزامی است؛ اگر پروفایل قبلاً به این ادمین متصل شده، برای بازیابی توکن می‌توانید آن را خالی بگذارید."
+            >
+              <Input
+                id="admin-legacy-player-token"
+                type="password"
+                autoComplete="off"
+                spellCheck={false}
+                value={legacyPlayerToken}
+                onChange={(event) => setLegacyPlayerToken(event.target.value)}
+                placeholder="توکن بازیکن"
+              />
+            </FormField>
+            <FormField label="کد بازیابی ۱۲ نویسه‌ای" htmlFor="admin-legacy-recovery-code">
+              <Input
+                id="admin-legacy-recovery-code"
+                type="text"
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                maxLength={12}
+                value={legacyRecoveryCode}
+                onChange={(event) => setLegacyRecoveryCode(event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, ""))}
+                placeholder="مثلاً ABCD2345EFGH"
+              />
+            </FormField>
+            <Button
+              variant="secondary"
+              loading={profileBusy}
+              disabled={!legacyPlayerToken.trim() && legacyRecoveryCode.length !== 12}
+              onClick={() =>
+                void syncAdminProfile(displayName, {
+                  token: legacyPlayerToken.trim(),
+                  recoveryCode: legacyRecoveryCode,
+                })
+              }
+            >
+              پیوند امن پروفایل قدیمی
+            </Button>
+          </div>
+        ) : null}
 
         <div className="arena-name-bar">
           <FormField label="نام نمایشی شما در بازی" htmlFor="arena-display-name">
@@ -484,7 +585,7 @@ export function AdminArenaPanel({
                 >
                   <Sparkles size={20} aria-hidden="true" />
                   <strong>شرطی (Stakes)</strong>
-                  <span>بدون محدودیت تیر برای ادمین + شارژ خودکار</span>
+                  <span>با رعایت حد شرط، شرایط صف و موجودی حساب متصل ادمین</span>
                 </button>
               </div>
 
@@ -510,6 +611,7 @@ export function AdminArenaPanel({
                 size="lg"
                 fullWidth
                 loading={queueBusy}
+                disabled={!profile || profileBusy}
                 icon={<Search size={18} aria-hidden="true" />}
                 onClick={() => void startQueue()}
               >

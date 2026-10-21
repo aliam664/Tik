@@ -91,6 +91,10 @@ export function AdminRoomsPanel({
       void load({ search, status });
     } catch (err) {
       const user = toUserError(err);
+      if (user.code === "ADMIN_UNAUTHORIZED") {
+        onSessionExpired();
+        return;
+      }
       showToast(user.message, "error");
     } finally {
       setClosing(false);
@@ -107,7 +111,12 @@ export function AdminRoomsPanel({
       showToast(`بازیکن ${symbol} از اتاق ${roomCode} اخراج شد.`, "success");
       void load({ search, status });
     } catch (err) {
-      showToast(toUserError(err).message, "error");
+      const user = toUserError(err);
+      if (user.code === "ADMIN_UNAUTHORIZED") {
+        onSessionExpired();
+        return;
+      }
+      showToast(user.message, "error");
     }
   };
 

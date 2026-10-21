@@ -59,13 +59,29 @@ export const adminSession = {
     const raw = safeGet(ADMIN_TOKEN_KEY);
     if (!raw) return null;
     try {
-      const parsed = JSON.parse(raw) as { token: string; expires_at: string };
-      if (new Date(parsed.expires_at).getTime() < Date.now()) {
+      const parsed: unknown = JSON.parse(raw);
+      if (
+        typeof parsed !== "object" ||
+        parsed === null ||
+        !("token" in parsed) ||
+        !("expires_at" in parsed) ||
+        typeof parsed.token !== "string" ||
+        parsed.token.trim().length === 0 ||
+        typeof parsed.expires_at !== "string"
+      ) {
         adminSession.clear();
         return null;
       }
-      return parsed;
+
+      const expiresAtMs = Date.parse(parsed.expires_at);
+      if (!Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) {
+        adminSession.clear();
+        return null;
+      }
+
+      return { token: parsed.token, expires_at: parsed.expires_at };
     } catch {
+      adminSession.clear();
       return null;
     }
   },

@@ -104,7 +104,12 @@ export function AdminEconomyPanel({
       setEditReason("");
       await load();
     } catch (err) {
-      showToast(toUserError(err).message, "error");
+      const user = toUserError(err);
+      if (user.code === "ADMIN_UNAUTHORIZED") {
+        onSessionExpired();
+        return;
+      }
+      showToast(user.message, "error");
     } finally {
       setBusy(false);
     }
@@ -117,7 +122,12 @@ export function AdminEconomyPanel({
       showToast("مقدار قبلی بازگردانی شد.", "success");
       await load();
     } catch (err) {
-      showToast(toUserError(err).message, "error");
+      const user = toUserError(err);
+      if (user.code === "ADMIN_UNAUTHORIZED") {
+        onSessionExpired();
+        return;
+      }
+      showToast(user.message, "error");
     } finally {
       setBusy(false);
     }
@@ -140,7 +150,12 @@ export function AdminEconomyPanel({
       setShowAddShop(false);
       await load();
     } catch (err) {
-      showToast(toUserError(err).message, "error");
+      const user = toUserError(err);
+      if (user.code === "ADMIN_UNAUTHORIZED") {
+        onSessionExpired();
+        return;
+      }
+      showToast(user.message, "error");
     } finally {
       setBusy(false);
     }

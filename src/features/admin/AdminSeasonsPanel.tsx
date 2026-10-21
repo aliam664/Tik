@@ -53,6 +53,17 @@ export function AdminSeasonsPanel({
   }, [load]);
 
   const create = async () => {
+    const startMs = Date.parse(startsAt);
+    const endMs = Date.parse(endsAt);
+    if (!name.trim()) {
+      showToast("نام فصل را وارد کنید.", "error");
+      return;
+    }
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
+      showToast("تاریخ پایان باید پس از تاریخ شروع باشد.", "error");
+      return;
+    }
+
     setBusy(true);
     try {
       await adminApi.createSeason(
@@ -66,7 +77,12 @@ export function AdminSeasonsPanel({
       setName("");
       await load();
     } catch (err) {
-      showToast(toUserError(err).message, "error");
+      const user = toUserError(err);
+      if (user.code === "ADMIN_UNAUTHORIZED") {
+        onSessionExpired();
+        return;
+      }
+      showToast(user.message, "error");
     } finally {
       setBusy(false);
     }
@@ -79,7 +95,12 @@ export function AdminSeasonsPanel({
       showToast(`فصل پایان یافت — جوایز ${toFaDigits(res.players)} بازیکن پرداخت شد.`, "success");
       await load();
     } catch (err) {
-      showToast(toUserError(err).message, "error");
+      const user = toUserError(err);
+      if (user.code === "ADMIN_UNAUTHORIZED") {
+        onSessionExpired();
+        return;
+      }
+      showToast(user.message, "error");
     } finally {
       setBusy(false);
     }

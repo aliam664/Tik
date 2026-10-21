@@ -41,7 +41,7 @@ import {
 import { medievalAudio } from "@/games/lastNight/sound";
 import { useEconomyProfile } from "@/hooks/useEconomyProfile";
 import { lastNightApi } from "@/lib/api";
-import { getErrorMessage } from "@/lib/errors";
+import { getErrorMessage, toUserError } from "@/lib/errors";
 import { supabase } from "@/lib/supabase";
 import type {
   LnRoomPlayer,
@@ -52,6 +52,22 @@ import type {
   MedievalWeaponId,
 } from "@/types/lastNight";
 import { LastNightShopModal } from "./LastNightShopModal";
+
+type CombatSyncRetry = {
+  roomCode: string;
+  playerToken: string;
+  requestId: string;
+  payload: Record<string, unknown>;
+  coinsDelta: number;
+  killsDelta: number;
+  bossDamageDelta: number;
+};
+
+const isCombatActive = (
+  state: LnRoomStateResponse["state"] | null | undefined,
+): boolean =>
+  state?.status === "active" &&
+  (state.phase === "combat" || state.phase === "boss");
 
 const QUICK_BELT_ITEMS: { id: MedievalShopItemId; key: string; shortFa: string }[] = [
   { id: "small_heal_potion", key: "1", shortFa: "معجون کوچک (+30 HP)" },
@@ -241,11 +257,32 @@ export function LastNightRoomPage() {
     nearestInteractableId: null,
   });
 
-  simRef.current.autoAim = autoAimEnabled;
-
   const roomStateRef = useRef<LnRoomStateResponse | null>(null);
-  roomStateRef.current = roomState;
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const roomRequestSeqRef = useRef(0);
+  const activeRoomCodeRef = useRef(normalizedCode);
+  const activePlayerTokenRef = useRef(session?.playerToken ?? null);
+  const combatSyncInFlightRef = useRef(false);
+  const combatSyncRetryRef = useRef<CombatSyncRetry | null>(null);
+  const [canvasElement, setCanvasElement] = useState<HTMLCanvasElement | null>(null);
+  const isCurrentRoomSession = useCallback(
+    (roomCode: string, playerToken: string) =>
+      activeRoomCodeRef.current === roomCode &&
+      activePlayerTokenRef.current === playerToken,
+    [],
+  );
+
+  useEffect(() => {
+    simRef.current.autoAim = autoAimEnabled;
+  }, [autoAimEnabled]);
+
+  useEffect(() => {
+    roomStateRef.current = roomState;
+  }, [roomState]);
+
+  useEffect(() => {
+    activeRoomCodeRef.current = normalizedCode;
+    activePlayerTokenRef.current = session?.playerToken ?? null;
+  }, [normalizedCode, session?.playerToken]);
 
   const showToast = useCallback((msg: string) => {
     setToastBanner(msg);
@@ -257,24 +294,143 @@ export function LastNightRoomPage() {
     return () => window.clearTimeout(t);
   }, [toastBanner]);
 
+  useEffect(() => {
+    roomRequestSeqRef.current += 1;
+    activeRoomCodeRef.current = normalizedCode;
+    const storedSession = loadLnSession(normalizedCode);
+    activePlayerTokenRef.current = storedSession?.playerToken ?? null;
+    combatSyncRetryRef.current = null;
+    setSession(storedSession);
+    roomStateRef.current = null;
+    setRoomState(null);
+    setLoading(/^[A-Z2-9]{6}$/.test(normalizedCode));
+    setErrorBanner(
+      /^[A-Z2-9]{6}$/.test(normalizedCode)
+        ? null
+        : "کد اتاق معتبر نیست. کد باید ۶ نویسه داشته باشد.",
+    );
+
+    const sim = simRef.current;
+    sim.initializedWave = 0;
+    sim.initializedMap = "cursed_village";
+    sim.timeSec = 0;
+    sim.localX = 590;
+    sim.localY = 455;
+    sim.aimX = 640;
+    sim.aimY = 360;
+    sim.aimAngle = 0;
+    sim.hp = 120;
+    sim.maxHp = 120;
+    sim.mana = 100;
+    sim.maxMana = 100;
+    sim.arrows = 20;
+    sim.bullets = 4;
+    sim.rustyKeys = 1;
+    sim.downed = false;
+    sim.soloReviveTimerSec = 0;
+    sim.webSlowSec = 0;
+    sim.loadedFirearm = true;
+    sim.reloadRemainingSec = 0;
+    sim.attackCooldownSec = 0;
+    sim.spellCooldowns = {};
+    sim.fireOilSec = 0;
+    sim.protectionSec = 0;
+    sim.charmSec = 0;
+    sim.shadowsSec = 0;
+    sim.spiritSec = 0;
+    sim.spiritAttackAccumSec = 0;
+    sim.squireX = 660;
+    sim.squireY = 455;
+    sim.squireAimAngle = 0;
+    sim.squireAttackAccumSec = 0;
+    sim.pendingCoinsEarned = 0;
+    sim.pendingKills = 0;
+    sim.pendingBossDamage = 0;
+    sim.waveClearSent = false;
+    sim.syncAccumSec = 0;
+    sim.hudAccumSec = 0;
+    sim.keysDown.clear();
+    sim.touchMoveX = 0;
+    sim.touchMoveY = 0;
+    sim.mouseDown = false;
+    sim.enemies = [];
+    sim.projectiles = [];
+    sim.thornTraps = [];
+    sim.interactables = createMapInteractables("cursed_village");
+    sim.slashes = [];
+    sim.lightningArcs = [];
+    sim.telegraphs = [];
+    sim.floatingTexts = [];
+    sim.nearestInteractableId = null;
+
+    setHudSnapshot((current) => ({
+      ...current,
+      hp: 120,
+      maxHp: 120,
+      mana: 100,
+      maxMana: 100,
+      arrows: 20,
+      bullets: 4,
+      rustyKeys: 1,
+      downed: false,
+      loadedFirearm: true,
+      reloadRemainingSec: 0,
+      spellCooldowns: {},
+      fireOilSec: 0,
+      protectionSec: 0,
+      charmSec: 0,
+      shadowsSec: 0,
+      spiritSec: 0,
+      enemiesRemaining: 0,
+      nearestPromptFa: null,
+      activeBoss: null,
+    }));
+  }, [normalizedCode]);
+
+  const playerToken =
+    session?.roomCode.toUpperCase() === normalizedCode ? session.playerToken : null;
+
+  const applyRoomState = useCallback((next: LnRoomStateResponse) => {
+    setRoomState((current) => {
+      if (next.state.room_code !== activeRoomCodeRef.current) return current;
+      if (
+        current &&
+        current.state.room_code === next.state.room_code &&
+        current.state.version > next.state.version
+      ) {
+        return current;
+      }
+      return next;
+    });
+  }, []);
+
   const fetchState = useCallback(
     async (notify = false) => {
-      if (!normalizedCode) return;
+      if (!/^[A-Z2-9]{6}$/.test(normalizedCode)) {
+        setLoading(false);
+        return;
+      }
+
+      const requestSeq = ++roomRequestSeqRef.current;
       try {
-        const res = await lastNightApi.getRoomState(
-          normalizedCode,
-          session?.playerToken ?? null,
-          notify,
-        );
-        setRoomState(res);
+        const res = await lastNightApi.getRoomState(normalizedCode, playerToken, notify);
+        if (
+          requestSeq !== roomRequestSeqRef.current ||
+          res.state.room_code !== normalizedCode
+        ) {
+          return;
+        }
+        applyRoomState(res);
         setErrorBanner(null);
       } catch (err) {
-        setErrorBanner(getErrorMessage(err));
+        if (requestSeq === roomRequestSeqRef.current) {
+          setErrorBanner(getErrorMessage(err));
+        }
       } finally {
-        setLoading(false);
+        if (requestSeq === roomRequestSeqRef.current) setLoading(false);
       }
     },
-    [normalizedCode, session?.playerToken],
+    [applyRoomState, normalizedCode, playerToken],
   );
 
   useEffect(() => {
@@ -329,7 +485,22 @@ export function LastNightRoomPage() {
       sim.thornTraps = [];
     }
 
-    if (me && state.status === "waiting") {
+    const completedInteractables = new Set([
+      ...(state.chests_opened ?? []),
+      ...(state.interactions ?? []),
+    ]);
+    if (completedInteractables.size > 0) {
+      sim.interactables = sim.interactables.map((interactable) =>
+        completedInteractables.has(interactable.id)
+          ? { ...interactable, activated: true }
+          : interactable,
+      );
+    }
+
+    const isIntermission =
+      state.status === "waiting" ||
+      (state.status === "active" && state.phase === "prep");
+    if (me && isIntermission) {
       sim.arrows = me.arrows;
       sim.bullets = me.bullets;
       sim.rustyKeys = me.rusty_keys;
@@ -337,14 +508,38 @@ export function LastNightRoomPage() {
       sim.maxHp = me.max_hp;
       sim.mana = me.mana;
       sim.maxMana = me.max_mana;
+      sim.downed = me.downed;
+      sim.loadedFirearm = me.loaded_firearm;
+      setHudSnapshot((current) => ({
+        ...current,
+        hp: me.hp,
+        maxHp: me.max_hp,
+        mana: me.mana,
+        maxMana: me.max_mana,
+        arrows: me.arrows,
+        bullets: me.bullets,
+        rustyKeys: me.rusty_keys,
+        downed: me.downed,
+        loadedFirearm: me.loaded_firearm,
+      }));
     }
 
-    if (state.status === "active" && sim.initializedWave !== state.wave) {
+    if (
+      state.status === "active" &&
+      (state.phase === "combat" || state.phase === "boss") &&
+      sim.initializedWave !== state.wave
+    ) {
       sim.initializedWave = state.wave;
       sim.waveClearSent = false;
       sim.enemies = createWaveEnemies(state.wave);
       sim.projectiles = [];
       sim.telegraphs = [];
+      sim.nearestInteractableId = null;
+      setHudSnapshot((current) => ({
+        ...current,
+        enemiesRemaining: sim.enemies.length,
+        activeBoss: null,
+      }));
       if (me) {
         const safePos = resolveLandmarkCollisions(
           me.pos_x || (me.seat === 1 ? 585 : 685),
@@ -366,6 +561,35 @@ export function LastNightRoomPage() {
         sim.rustyKeys = me.rusty_keys;
         sim.downed = me.downed;
         sim.loadedFirearm = me.loaded_firearm;
+
+        const serverNowMs = Date.parse(state.server_now);
+        const remainingSeconds = (readyAtMs?: number) => {
+          const readyAt = Number(readyAtMs ?? 0);
+          return Number.isFinite(serverNowMs) && Number.isFinite(readyAt)
+            ? Math.max(0, (readyAt - serverNowMs) / 1000)
+            : 0;
+        };
+        sim.spellCooldowns = Object.fromEntries(
+          Object.entries(me.spell_cooldowns ?? {})
+            .map(([spellId, readyAt]) => [spellId, remainingSeconds(readyAt)] as const)
+            .filter(([, seconds]) => seconds > 0),
+        );
+        sim.protectionSec = remainingSeconds(me.active_buffs.protection_until);
+        sim.shadowsSec = remainingSeconds(me.active_buffs.shadows_until);
+        sim.fireOilSec = remainingSeconds(me.active_buffs.fire_oil_until);
+        sim.charmSec = remainingSeconds(me.active_buffs.charm_until);
+        sim.spiritSec = remainingSeconds(me.active_buffs.spirit_until);
+        sim.spiritAttackAccumSec = 0;
+
+        const reloadReadyAtMs = me.firearm_reload_ready_at
+          ? Date.parse(me.firearm_reload_ready_at)
+          : Number.NaN;
+        sim.reloadRemainingSec = Number.isFinite(serverNowMs) && Number.isFinite(reloadReadyAtMs)
+          ? Math.max(0, (reloadReadyAtMs - serverNowMs) / 1000)
+          : 0;
+        if (!sim.loadedFirearm && sim.reloadRemainingSec === 0) {
+          sim.loadedFirearm = true;
+        }
       }
       const bossSpec = getBossForWave(state.wave);
       if (bossSpec) {
@@ -400,10 +624,21 @@ export function LastNightRoomPage() {
         savedAt: new Date().toISOString(),
       };
       saveLnSession(nextSession);
+      if (activeRoomCodeRef.current !== normalizedCode) return;
+      activePlayerTokenRef.current = nextSession.playerToken;
       setSession(nextSession);
-      await fetchState(true);
+      const stateRes = await lastNightApi.getRoomState(
+        normalizedCode,
+        nextSession.playerToken,
+        true,
+      );
+      if (!isCurrentRoomSession(normalizedCode, nextSession.playerToken)) return;
+      applyRoomState(stateRes);
+      setErrorBanner(null);
     } catch (err) {
-      setErrorBanner(getErrorMessage(err));
+      if (activeRoomCodeRef.current === normalizedCode) {
+        setErrorBanner(getErrorMessage(err));
+      }
     } finally {
       setJoining(false);
     }
@@ -418,15 +653,19 @@ export function LastNightRoomPage() {
         session.playerToken,
         "start_wave",
       );
-      setRoomState(res);
+      if (!isCurrentRoomSession(normalizedCode, session.playerToken)) return;
+      applyRoomState(res);
     } catch (err) {
-      setErrorBanner(getErrorMessage(err));
+      if (isCurrentRoomSession(normalizedCode, session.playerToken)) {
+        setErrorBanner(getErrorMessage(err));
+      }
     } finally {
       setBusyId(null);
     }
   };
 
   const syncLocalAmmoFromResponse = (res: LnRoomStateResponse, fallbackSeat?: number) => {
+    if (res.state.room_code !== activeRoomCodeRef.current) return;
     const mySeat = res.seat ?? fallbackSeat;
     const p = res.state.players.find((pl) => pl.seat === mySeat);
     if (p) {
@@ -438,6 +677,126 @@ export function LastNightRoomPage() {
     }
   };
 
+  const sendCombatSync = useCallback(async (): Promise<LnRoomStateResponse | null> => {
+    if (
+      !session ||
+      !isCurrentRoomSession(normalizedCode, session.playerToken) ||
+      combatSyncInFlightRef.current
+    ) {
+      return null;
+    }
+
+    const sim = simRef.current;
+    let request = combatSyncRetryRef.current;
+    if (
+      !request ||
+      request.roomCode !== normalizedCode ||
+      request.playerToken !== session.playerToken
+    ) {
+      request = {
+        roomCode: normalizedCode,
+        playerToken: session.playerToken,
+        requestId: crypto.randomUUID(),
+        payload: {
+          pos_x: Math.round(sim.localX),
+          pos_y: Math.round(sim.localY),
+          hp: Math.round(sim.hp),
+          mana: Math.round(sim.mana),
+          arrows: sim.arrows,
+          bullets: sim.bullets,
+          downed: sim.downed,
+          loaded_firearm: sim.loadedFirearm,
+          coins_delta: sim.pendingCoinsEarned,
+          kills_delta: sim.pendingKills,
+          damage_delta: sim.pendingBossDamage,
+        },
+        coinsDelta: sim.pendingCoinsEarned,
+        killsDelta: sim.pendingKills,
+        bossDamageDelta: sim.pendingBossDamage,
+      };
+      combatSyncRetryRef.current = request;
+    }
+
+    combatSyncInFlightRef.current = true;
+    try {
+      const res = await lastNightApi.syncAction(
+        request.roomCode,
+        request.playerToken,
+        "combat_sync",
+        { ...request.payload, request_id: request.requestId },
+      );
+      if (
+        activeRoomCodeRef.current !== request.roomCode ||
+        activePlayerTokenRef.current !== request.playerToken
+      ) {
+        return res;
+      }
+      if (combatSyncRetryRef.current?.requestId === request.requestId) {
+        combatSyncRetryRef.current = null;
+      }
+
+      sim.pendingCoinsEarned = Math.max(0, sim.pendingCoinsEarned - request.coinsDelta);
+      sim.pendingKills = Math.max(0, sim.pendingKills - request.killsDelta);
+      sim.pendingBossDamage = Math.max(0, sim.pendingBossDamage - request.bossDamageDelta);
+
+      const sentHp = request.payload.hp;
+      const sentMana = request.payload.mana;
+      const sentArrows = request.payload.arrows;
+      const sentBullets = request.payload.bullets;
+      const sentDowned = request.payload.downed;
+      const sentLoaded = request.payload.loaded_firearm;
+      const mySeat = res.seat ?? session.seat;
+      const player = res.state.players.find((candidate) => candidate.seat === mySeat);
+      if (player) {
+        if (typeof sentHp === "number" && Math.round(sim.hp) === sentHp) sim.hp = player.hp;
+        if (typeof sentMana === "number" && Math.round(sim.mana) === sentMana) sim.mana = player.mana;
+        if (typeof sentArrows === "number" && sim.arrows === sentArrows) sim.arrows = player.arrows;
+        if (typeof sentBullets === "number" && sim.bullets === sentBullets) sim.bullets = player.bullets;
+        if (typeof sentDowned === "boolean" && sim.downed === sentDowned) sim.downed = player.downed;
+        if (typeof sentLoaded === "boolean" && sim.loadedFirearm === sentLoaded) {
+          sim.loadedFirearm = player.loaded_firearm;
+          if (player.loaded_firearm) sim.reloadRemainingSec = 0;
+        }
+      }
+
+      applyRoomState(res);
+      const creditedCoins = res.combat_reward_coins ?? 0;
+      if (creditedCoins > 0) {
+        sim.floatingTexts.push({
+          id: `combat_reward_${request.requestId}`,
+          x: sim.localX,
+          y: sim.localY - 24,
+          text: `+${creditedCoins} ${SHERIFF_COIN_NAME}`,
+          color: "#facc15",
+          ttlSec: 1.6,
+        });
+      }
+      return res;
+    } catch (err) {
+      const userError = toUserError(err);
+      const permanentCodes = new Set([
+        "GAME_NOT_ACTIVE",
+        "INVALID_AMMO",
+        "INVALID_PLAYER_STATE",
+        "INVALID_POSITION",
+        "PLAYER_MOVED_TOO_FAST",
+        "PLAYER_UNAUTHORIZED",
+        "ROOM_CLOSED",
+        "ROOM_EXPIRED",
+        "ROOM_NOT_FOUND",
+      ]);
+      if (
+        permanentCodes.has(userError.code) &&
+        combatSyncRetryRef.current?.requestId === request.requestId
+      ) {
+        combatSyncRetryRef.current = null;
+      }
+      throw err;
+    } finally {
+      combatSyncInFlightRef.current = false;
+    }
+  }, [applyRoomState, isCurrentRoomSession, normalizedCode, session]);
+
   const handleBuyWeapon = async (weaponId: MedievalWeaponId) => {
     if (!session) return;
     setBusyId(weaponId);
@@ -448,14 +807,17 @@ export function LastNightRoomPage() {
         "weapon",
         weaponId,
       );
-      setRoomState(res);
+      if (!isCurrentRoomSession(normalizedCode, session.playerToken)) return;
+      applyRoomState(res);
       syncLocalAmmoFromResponse(res, session.seat);
       simRef.current.loadedFirearm = true;
       simRef.current.reloadRemainingSec = 0;
       medievalAudio.play("coin_clink");
       showToast(`سلاح جدید خریداری و تجهیز شد!`);
     } catch (err) {
-      setErrorBanner(getErrorMessage(err));
+      if (isCurrentRoomSession(normalizedCode, session.playerToken)) {
+        setErrorBanner(getErrorMessage(err));
+      }
     } finally {
       setBusyId(null);
     }
@@ -468,11 +830,14 @@ export function LastNightRoomPage() {
       const res = await lastNightApi.equipLoadout(normalizedCode, session.playerToken, {
         weapon: weaponId,
       });
-      setRoomState(res);
+      if (!isCurrentRoomSession(normalizedCode, session.playerToken)) return;
+      applyRoomState(res);
       simRef.current.loadedFirearm = true;
       simRef.current.reloadRemainingSec = 0;
     } catch (err) {
-      setErrorBanner(getErrorMessage(err));
+      if (isCurrentRoomSession(normalizedCode, session.playerToken)) {
+        setErrorBanner(getErrorMessage(err));
+      }
     } finally {
       setBusyId(null);
     }
@@ -488,11 +853,14 @@ export function LastNightRoomPage() {
         "spellbook",
         bookId,
       );
-      setRoomState(res);
+      if (!isCurrentRoomSession(normalizedCode, session.playerToken)) return;
+      applyRoomState(res);
       medievalAudio.play("coin_clink");
       showToast(`کتاب جادوی جدید خریداری شد!`);
     } catch (err) {
-      setErrorBanner(getErrorMessage(err));
+      if (isCurrentRoomSession(normalizedCode, session.playerToken)) {
+        setErrorBanner(getErrorMessage(err));
+      }
     } finally {
       setBusyId(null);
     }
@@ -518,9 +886,12 @@ export function LastNightRoomPage() {
       const res = await lastNightApi.equipLoadout(normalizedCode, session.playerToken, {
         spells: toggled.equipped,
       });
-      setRoomState(res);
+      if (!isCurrentRoomSession(normalizedCode, session.playerToken)) return;
+      applyRoomState(res);
     } catch (err) {
-      setErrorBanner(getErrorMessage(err));
+      if (isCurrentRoomSession(normalizedCode, session.playerToken)) {
+        setErrorBanner(getErrorMessage(err));
+      }
     } finally {
       setBusyId(null);
     }
@@ -536,7 +907,8 @@ export function LastNightRoomPage() {
         "item",
         itemId,
       );
-      setRoomState(res);
+      if (!isCurrentRoomSession(normalizedCode, session.playerToken)) return;
+      applyRoomState(res);
       syncLocalAmmoFromResponse(res, session.seat);
       medievalAudio.play("coin_clink");
       const spec = getShopItemSpec(itemId);
@@ -544,7 +916,9 @@ export function LastNightRoomPage() {
         showToast(`✓ ${spec.nameEn} خریداری شد.`);
       }
     } catch (err) {
-      setErrorBanner(getErrorMessage(err));
+      if (isCurrentRoomSession(normalizedCode, session.playerToken)) {
+        setErrorBanner(getErrorMessage(err));
+      }
     } finally {
       setBusyId(null);
     }
@@ -553,6 +927,10 @@ export function LastNightRoomPage() {
   const handleUseItem = useCallback(
     async (itemId: MedievalShopItemId) => {
       if (!session) return;
+      if (!isCombatActive(roomStateRef.current?.state)) {
+        setErrorBanner("استفاده از آیتم فقط هنگام نبرد امکان‌پذیر است.");
+        return;
+      }
       setBusyId(`use_${itemId}`);
       try {
         const res = await lastNightApi.useItem(
@@ -560,7 +938,8 @@ export function LastNightRoomPage() {
           session.playerToken,
           itemId,
         );
-        setRoomState(res);
+        if (!isCurrentRoomSession(normalizedCode, session.playerToken)) return;
+        applyRoomState(res);
         const sim = simRef.current;
         const updatedMe = res.state.players.find(
           (p) => p.seat === (res.seat ?? session.seat),
@@ -593,15 +972,18 @@ export function LastNightRoomPage() {
           });
         }
       } catch (err) {
-        setErrorBanner(getErrorMessage(err));
+        if (isCurrentRoomSession(normalizedCode, session.playerToken)) {
+          setErrorBanner(getErrorMessage(err));
+        }
       } finally {
         setBusyId(null);
       }
     },
-    [normalizedCode, session],
+    [applyRoomState, isCurrentRoomSession, normalizedCode, session],
   );
 
   // Cast equipped magic book (Slot 0 = [Q], Slot 1 = [F])
+  /* eslint-disable react-hooks/immutability -- This callback intentionally mutates the ref-owned simulation world, never React state. */
   const handleCastSpellSlot = useCallback(
     async (slotIndex: 0 | 1) => {
       const currentRes = roomStateRef.current;
@@ -609,6 +991,10 @@ export function LastNightRoomPage() {
       const currentMe =
         currentRes?.state.players.find((p) => p.seat === mySeat) ?? me;
       if (!session || !currentMe) return;
+      if (!isCombatActive(currentRes?.state)) {
+        showToast("طلسم‌ها را فقط هنگام نبرد می‌توانید اجرا کنید.");
+        return;
+      }
 
       const spellId = currentMe.equipped_spells[slotIndex];
       if (!spellId) {
@@ -644,7 +1030,29 @@ export function LastNightRoomPage() {
         }
       }
 
-      sim.mana = Math.max(0, sim.mana - spec.manaCost);
+      // Ask the server to validate mana, cooldown, seat and phase before any
+      // local projectile, damage, buff, or resource mutation is applied.
+      let castResult: LnRoomStateResponse;
+      try {
+        castResult = await lastNightApi.castSpell(
+          normalizedCode,
+          session.playerToken,
+          spellId,
+          sim.aimX,
+          sim.aimY,
+        );
+      } catch (err) {
+        if (isCurrentRoomSession(normalizedCode, session.playerToken)) {
+          setErrorBanner(getErrorMessage(err));
+        }
+        return;
+      }
+      if (!isCurrentRoomSession(normalizedCode, session.playerToken)) return;
+      applyRoomState(castResult);
+      const updatedMe = castResult.state.players.find(
+        (player) => player.seat === (castResult.seat ?? session.seat),
+      );
+      sim.mana = updatedMe?.mana ?? Math.max(0, sim.mana - spec.manaCost);
       sim.spellCooldowns[spellId] = spec.cooldownSec;
 
       const dirX = Math.cos(sim.aimAngle);
@@ -759,25 +1167,18 @@ export function LastNightRoomPage() {
         });
       }
 
-      try {
-        const res = await lastNightApi.castSpell(
-          normalizedCode,
-          session.playerToken,
-          spellId,
-          sim.aimX,
-          sim.aimY,
-        );
-        setRoomState(res);
-      } catch (err) {
-        setErrorBanner(getErrorMessage(err));
-      }
     },
-    [me, normalizedCode, session, showToast],
+    [applyRoomState, isCurrentRoomSession, me, normalizedCode, session, showToast],
   );
+  /* eslint-enable react-hooks/immutability */
 
   const handleInteractNearest = useCallback(async () => {
     const sim = simRef.current;
-    if (!session || !sim.nearestInteractableId) {
+    if (!session || !isCombatActive(roomStateRef.current?.state)) {
+      showToast("این تعامل در فاز آماده‌سازی در دسترس نیست.");
+      return;
+    }
+    if (!sim.nearestInteractableId) {
       showToast("به یک مشعل، صندوقچه، رون باستانی یا دروازه نزدیک شوید تا با [E] فعال شود.");
       return;
     }
@@ -791,16 +1192,17 @@ export function LastNightRoomPage() {
       return;
     }
 
+    const previousRustyKeys = sim.rustyKeys;
+    const floatingTextId = `obj_${Date.now()}_${target.id}`;
     target.activated = true;
     if (target.requiresKey) {
       sim.rustyKeys = Math.max(0, sim.rustyKeys - 1);
     }
-    medievalAudio.play(target.kind === "chest" ? "chest_unlock" : "torch_light");
     sim.floatingTexts.push({
-      id: `obj_${Date.now()}`,
+      id: floatingTextId,
       x: target.x,
       y: target.y - 20,
-      text: `+${target.rewardCoins} ${SHERIFF_COIN_NAME}`,
+      text: "در حال ثبت تعامل...",
       color: "#fde047",
       ttlSec: 1.6,
     });
@@ -811,19 +1213,43 @@ export function LastNightRoomPage() {
         session.playerToken,
         target.requiresKey ? "open_chest" : "complete_objective",
         {
+          interactable_id: target.id,
           chest_id: target.id,
+          pos_x: Math.round(sim.localX),
+          pos_y: Math.round(sim.localY),
           requires_key: Boolean(target.requiresKey),
           objective_id: target.objectiveId,
           reward_coins: target.rewardCoins,
         },
       );
-      setRoomState(res);
+      if (!isCurrentRoomSession(normalizedCode, session.playerToken)) return;
+      applyRoomState(res);
       syncLocalAmmoFromResponse(res, session.seat);
+      const earnedCoins = res.interaction_recorded
+        ? (res.interaction_reward_coins ?? 0)
+        : 0;
+      sim.floatingTexts = sim.floatingTexts.filter((item) => item.id !== floatingTextId);
+      sim.floatingTexts.push({
+        id: `${floatingTextId}_result`,
+        x: target.x,
+        y: target.y - 20,
+        text: earnedCoins > 0
+          ? `+${earnedCoins} ${SHERIFF_COIN_NAME}`
+          : res.interaction_recorded
+            ? "پیشرفت هدف ثبت شد"
+            : "این شیء قبلاً فعال شده است",
+        color: earnedCoins > 0 ? "#fde047" : res.interaction_recorded ? "#86efac" : "#94a3b8",
+        ttlSec: 1.6,
+      });
+      medievalAudio.play(target.kind === "chest" ? "chest_unlock" : "torch_light");
     } catch (err) {
+      if (!isCurrentRoomSession(normalizedCode, session.playerToken)) return;
       target.activated = false;
+      sim.rustyKeys = previousRustyKeys;
+      sim.floatingTexts = sim.floatingTexts.filter((item) => item.id !== floatingTextId);
       setErrorBanner(getErrorMessage(err));
     }
-  }, [normalizedCode, session, showToast]);
+  }, [applyRoomState, isCurrentRoomSession, normalizedCode, session, showToast]);
 
   const handleReloadOrRevive = useCallback(async () => {
     const sim = simRef.current;
@@ -831,7 +1257,7 @@ export function LastNightRoomPage() {
     const mySeat = currentRes?.seat ?? session?.seat;
     const currentMe =
       currentRes?.state.players.find((p) => p.seat === mySeat) ?? me;
-    if (!session || !currentMe) return;
+    if (!session || !currentMe || !isCombatActive(currentRes?.state)) return;
 
     const downedAlly = currentRes?.state.players.find(
       (p) => p.seat !== currentMe.seat && p.downed,
@@ -845,13 +1271,20 @@ export function LastNightRoomPage() {
           normalizedCode,
           session.playerToken,
           "revive_ally",
-          { target_seat: downedAlly.seat },
+          {
+            target_seat: downedAlly.seat,
+            pos_x: Math.round(sim.localX),
+            pos_y: Math.round(sim.localY),
+          },
         );
-        setRoomState(res);
+        if (!isCurrentRoomSession(normalizedCode, session.playerToken)) return;
+        applyRoomState(res);
         showToast(`✨ هم‌تیمی شما (${downedAlly.name}) احیا شد!`);
         return;
       } catch (err) {
-        setErrorBanner(getErrorMessage(err));
+        if (isCurrentRoomSession(normalizedCode, session.playerToken)) {
+          setErrorBanner(getErrorMessage(err));
+        }
       }
     }
 
@@ -866,17 +1299,40 @@ export function LastNightRoomPage() {
       sim.reloadRemainingSec = weapon.reloadSec;
       medievalAudio.play("firearm_reload");
     }
-  }, [me, normalizedCode, session, showToast]);
+  }, [applyRoomState, isCurrentRoomSession, me, normalizedCode, session, showToast]);
 
   useEffect(() => {
+    if (shopOpen) {
+      simRef.current.keysDown.clear();
+      simRef.current.touchMoveX = 0;
+      simRef.current.touchMoveY = 0;
+      simRef.current.mouseDown = false;
+    }
+  }, [shopOpen]);
+
+  useEffect(() => {
+    const sim = simRef.current;
     const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target;
       if (
-        document.activeElement instanceof HTMLInputElement ||
-        document.activeElement instanceof HTMLTextAreaElement
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
       ) {
         return;
       }
       const key = e.key.toLowerCase();
+      const actionKeys = "qferb123456";
+      if (e.repeat && actionKeys.includes(key)) return;
+
+      if (key === "b") {
+        e.preventDefault();
+        setShopOpen((prev) => !prev);
+        return;
+      }
+      if (shopOpen) return;
+
       simRef.current.keysDown.add(key);
 
       if (key === "q") {
@@ -891,9 +1347,6 @@ export function LastNightRoomPage() {
       } else if (key === "r") {
         e.preventDefault();
         void handleReloadOrRevive();
-      } else if (key === "b") {
-        e.preventDefault();
-        setShopOpen((prev) => !prev);
       } else if (key === "1") {
         void handleUseItem("small_heal_potion");
       } else if (key === "2") {
@@ -918,16 +1371,31 @@ export function LastNightRoomPage() {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
+      sim.keysDown.clear();
     };
-  }, [handleCastSpellSlot, handleInteractNearest, handleReloadOrRevive, handleUseItem]);
+  }, [
+    handleCastSpellSlot,
+    handleInteractNearest,
+    handleReloadOrRevive,
+    handleUseItem,
+    shopOpen,
+  ]);
 
+  /* eslint-disable react-hooks/immutability -- The fixed-timestep loop mutates only ref-owned world entities outside React render. */
   const triggerPrimaryAttack = useCallback(() => {
     const sim = simRef.current;
     const currentRes = roomStateRef.current;
     const mySeat = currentRes?.seat ?? session?.seat;
     const currentMe =
       currentRes?.state.players.find((p) => p.seat === mySeat) ?? me;
-    if (!currentMe || sim.downed || sim.attackCooldownSec > 0) return;
+    if (
+      !currentMe ||
+      !isCombatActive(currentRes?.state) ||
+      sim.downed ||
+      sim.attackCooldownSec > 0
+    ) {
+      return;
+    }
 
     // Auto-aim assist toward nearest living monster when autoAim is enabled
     if (sim.autoAim && sim.enemies.length > 0) {
@@ -976,19 +1444,7 @@ export function LastNightRoomPage() {
       if (sim.bullets > 0) {
         sim.reloadRemainingSec = weapon.reloadSec;
       }
-      if (session) {
-        void lastNightApi
-          .syncAction(normalizedCode, session.playerToken, "combat_sync", {
-            pos_x: Math.round(sim.localX),
-            pos_y: Math.round(sim.localY),
-            hp: Math.round(sim.hp),
-            mana: Math.round(sim.mana),
-            bullets: sim.bullets,
-            loaded_firearm: false,
-          })
-          .then(setRoomState)
-          .catch(() => {});
-      }
+      void sendCombatSync().catch(() => {});
       return;
     }
 
@@ -1016,18 +1472,7 @@ export function LastNightRoomPage() {
         color: "#eab308",
         ttlSec: 1.1,
       });
-      if (session) {
-        void lastNightApi
-          .syncAction(normalizedCode, session.playerToken, "combat_sync", {
-            pos_x: Math.round(sim.localX),
-            pos_y: Math.round(sim.localY),
-            hp: Math.round(sim.hp),
-            mana: Math.round(sim.mana),
-            arrows: sim.arrows,
-          })
-          .then(setRoomState)
-          .catch(() => {});
-      }
+      void sendCombatSync().catch(() => {});
       return;
     }
 
@@ -1094,8 +1539,10 @@ export function LastNightRoomPage() {
         }
       }
     }
-  }, [handleReloadOrRevive, me, normalizedCode, session, showToast]);
+  }, [handleReloadOrRevive, me, sendCombatSync, session, showToast]);
+  /* eslint-enable react-hooks/immutability */
 
+  /* eslint-disable react-hooks/immutability -- Simulation arrays are mutable by design and are owned by simRef, not React state. */
   const handleUpdate = useCallback(
     (dt: number) => {
       const sim = simRef.current;
@@ -1105,7 +1552,11 @@ export function LastNightRoomPage() {
       const currentMe = state?.players.find((p) => p.seat === mySeat) ?? me;
       sim.timeSec += dt;
 
-      if (!state || state.status !== "active") {
+      if (
+        !state ||
+        state.status !== "active" ||
+        (state.phase !== "combat" && state.phase !== "boss")
+      ) {
         return;
       }
 
@@ -1383,14 +1834,6 @@ export function LastNightRoomPage() {
         if (enemy.hp <= 0) {
           sim.pendingCoinsEarned += enemy.rewardCoins;
           sim.pendingKills += 1;
-          sim.floatingTexts.push({
-            id: `coin_${Date.now()}_${Math.random()}`,
-            x: enemy.x,
-            y: enemy.y,
-            text: `+${enemy.rewardCoins} ${SHERIFF_COIN_NAME}`,
-            color: "#facc15",
-            ttlSec: 1.2,
-          });
           continue;
         }
 
@@ -1595,69 +2038,36 @@ export function LastNightRoomPage() {
 
       if (sim.enemies.length === 0 && !sim.waveClearSent && session) {
         sim.waveClearSent = true;
-        const coinsToSync = sim.pendingCoinsEarned;
-        const killsToSync = sim.pendingKills;
-        const bossDmgToSync = sim.pendingBossDamage;
-        sim.pendingCoinsEarned = 0;
-        sim.pendingKills = 0;
-        sim.pendingBossDamage = 0;
         const bossForWave = getBossForWave(state.wave);
 
-        void lastNightApi
-          .syncAction(normalizedCode, session.playerToken, "combat_sync", {
-            pos_x: Math.round(sim.localX),
-            pos_y: Math.round(sim.localY),
-            hp: Math.round(sim.hp),
-            mana: Math.round(sim.mana),
-            arrows: sim.arrows,
-            bullets: sim.bullets,
-            downed: sim.downed,
-            coins_delta: coinsToSync,
-            kills_delta: killsToSync,
-            damage_delta: bossDmgToSync,
-          })
-          .then(() =>
-            lastNightApi.syncAction(
+        void sendCombatSync()
+          .then((syncRes) => {
+            if (!syncRes) throw new Error("COMBAT_SYNC_BUSY");
+            return lastNightApi.syncAction(
               normalizedCode,
               session.playerToken,
               "wave_cleared",
               { boss_id: bossForWave?.kind ?? null },
-            ),
-          )
+            );
+          })
           .then((res) => {
-            setRoomState(res);
+            applyRoomState(res);
             syncLocalAmmoFromResponse(res, session.seat);
             void refreshProfile();
           })
-          .catch(() => {});
+          .catch(() => {
+            // The server may reject an early clear or a transient sync. Retry
+            // the idempotent transition after a short delay rather than softlocking the wave.
+            window.setTimeout(() => {
+              sim.waveClearSent = false;
+            }, 2500);
+          });
       }
 
       sim.syncAccumSec += dt;
       if (sim.syncAccumSec >= 1.4 && session && currentMe) {
         sim.syncAccumSec = 0;
-        const coinsDelta = sim.pendingCoinsEarned;
-        const killsDelta = sim.pendingKills;
-        const bossDmgDelta = sim.pendingBossDamage;
-        sim.pendingCoinsEarned = 0;
-        sim.pendingKills = 0;
-        sim.pendingBossDamage = 0;
-
-        void lastNightApi
-          .syncAction(normalizedCode, session.playerToken, "combat_sync", {
-            pos_x: Math.round(sim.localX),
-            pos_y: Math.round(sim.localY),
-            hp: Math.round(sim.hp),
-            mana: Math.round(sim.mana),
-            arrows: sim.arrows,
-            bullets: sim.bullets,
-            downed: sim.downed,
-            loaded_firearm: sim.loadedFirearm,
-            coins_delta: coinsDelta,
-            kills_delta: killsDelta,
-            damage_delta: bossDmgDelta,
-          })
-          .then(setRoomState)
-          .catch(() => {});
+        void sendCombatSync().catch(() => {});
       }
 
       sim.hudAccumSec += dt;
@@ -1701,8 +2111,9 @@ export function LastNightRoomPage() {
         });
       }
     },
-    [me, normalizedCode, refreshProfile, session, triggerPrimaryAttack],
+    [applyRoomState, me, normalizedCode, refreshProfile, sendCombatSync, session, triggerPrimaryAttack],
   );
+  /* eslint-enable react-hooks/immutability */
 
   const handleRender = useCallback(
     (ctx: CanvasRenderingContext2D, width: number, height: number) => {
@@ -1810,23 +2221,34 @@ export function LastNightRoomPage() {
     [me, session],
   );
 
+  const updateHandlerRef = useRef(handleUpdate);
+  const renderHandlerRef = useRef(handleRender);
+
   useEffect(() => {
-    const canvas = canvasRef.current;
+    updateHandlerRef.current = handleUpdate;
+  }, [handleUpdate]);
+
+  useEffect(() => {
+    renderHandlerRef.current = handleRender;
+  }, [handleRender]);
+
+  useEffect(() => {
+    const canvas = canvasElement;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     const loop = new GameLoop2D({
       tickHz: 60,
-      update: (dt) => handleUpdate(dt),
-      render: () => handleRender(ctx, canvas.width, canvas.height),
+      update: (dt) => updateHandlerRef.current(dt),
+      render: () => renderHandlerRef.current(ctx, canvas.width, canvas.height),
     });
 
     loop.start();
     return () => {
       loop.stop();
     };
-  }, [handleUpdate, handleRender]);
+  }, [canvasElement]);
 
   if (loading && !roomState) {
     return (
@@ -2013,6 +2435,16 @@ export function LastNightRoomPage() {
               }
             }}
             onPointerDown={(e) => {
+              const target = e.target;
+              if (
+                e.button !== 0 ||
+                (target instanceof Element &&
+                  target.closest("button, a, input, select, textarea, .ln-canvas-overlay"))
+              ) {
+                return;
+              }
+              e.preventDefault();
+              e.currentTarget.setPointerCapture(e.pointerId);
               const rect = e.currentTarget.getBoundingClientRect();
               if (rect.width > 0 && rect.height > 0) {
                 simRef.current.aimX =
@@ -2023,15 +2455,21 @@ export function LastNightRoomPage() {
               simRef.current.mouseDown = true;
               triggerPrimaryAttack();
             }}
-            onPointerUp={() => {
+            onPointerUp={(e) => {
               simRef.current.mouseDown = false;
+              if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+              }
             }}
             onPointerCancel={() => {
               simRef.current.mouseDown = false;
             }}
+            onLostPointerCapture={() => {
+              simRef.current.mouseDown = false;
+            }}
           >
             <canvas
-              ref={canvasRef}
+              ref={setCanvasElement}
               width={WORLD_WIDTH}
               height={WORLD_HEIGHT}
               className="ln-canvas-stage"

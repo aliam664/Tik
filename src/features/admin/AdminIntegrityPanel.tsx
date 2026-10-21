@@ -26,6 +26,7 @@ export function AdminIntegrityPanel({
   const { showToast } = useToast();
   const [flags, setFlags] = useState<Record<string, unknown>[]>([]);
   const [queue, setQueue] = useState<Record<string, unknown> | null>(null);
+  const [queueError, setQueueError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -33,13 +34,25 @@ export function AdminIntegrityPanel({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [f, q] = await Promise.all([
+      const [flagsResult, queueResult] = await Promise.allSettled([
         adminApi.listRiskFlags(token, "open", 50),
-        adminApi.matchmakingStats(token).catch(() => null),
+        adminApi.matchmakingStats(token),
       ]);
-      setFlags(f.items);
-      setQueue(q);
+      if (flagsResult.status === "rejected") throw flagsResult.reason;
+      setFlags(flagsResult.value.items);
       setError(null);
+      if (queueResult.status === "fulfilled") {
+        setQueue(queueResult.value);
+        setQueueError(null);
+      } else {
+        const queueUserError = toUserError(queueResult.reason);
+        if (queueUserError.code === "ADMIN_UNAUTHORIZED") {
+          onSessionExpired();
+          return;
+        }
+        setQueue(null);
+        setQueueError(queueUserError.message);
+      }
     } catch (err) {
       const user = toUserError(err);
       if (user.code === "ADMIN_UNAUTHORIZED") onSessionExpired();
@@ -60,7 +73,12 @@ export function AdminIntegrityPanel({
       showToast(resolution === "resolved" ? "پرچم تأیید شد." : "پرچم رد شد.", "success");
       await load();
     } catch (err) {
-      showToast(toUserError(err).message, "error");
+      const user = toUserError(err);
+      if (user.code === "ADMIN_UNAUTHORIZED") {
+        onSessionExpired();
+        return;
+      }
+      showToast(user.message, "error");
     } finally {
       setBusy(false);
     }
@@ -76,7 +94,12 @@ export function AdminIntegrityPanel({
       showToast(`${name} از صف خارج شد.`, "success");
       await load();
     } catch (err) {
-      showToast(toUserError(err).message, "error");
+      const user = toUserError(err);
+      if (user.code === "ADMIN_UNAUTHORIZED") {
+        onSessionExpired();
+        return;
+      }
+      showToast(user.message, "error");
     } finally {
       setBusy(false);
     }
@@ -96,6 +119,7 @@ export function AdminIntegrityPanel({
         </Button>
       </div>
 
+      {queueError ? <p className="inline-warning" role="status">وضعیت صف دریافت نشد: {queueError}</p> : null}
       {queue ? (
         <div className="econ-metrics">
           <div className="econ-metric">

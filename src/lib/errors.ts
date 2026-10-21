@@ -51,7 +51,25 @@ export type ServerErrorCode =
   | "ITEM_ON_COOLDOWN"
   | "INSUFFICIENT_MANA"
   | "MAX_TWO_SPELLBOOKS"
-  | "KEY_REQUIRED";
+  | "KEY_REQUIRED"
+  | "INVALID_SETTING"
+  | "INVALID_POSITION"
+  | "PLAYER_MOVED_TOO_FAST"
+  | "INVALID_PLAYER_STATE"
+  | "INVALID_REWARD"
+  | "INVALID_AMMO"
+  | "RELOAD_NOT_READY"
+  | "INTERACTABLE_NOT_FOUND"
+  | "INTERACTABLE_TOO_FAR"
+  | "INVALID_INTERACTION"
+  | "OBJECTIVE_NOT_FOUND"
+  | "TARGET_NOT_DOWNED"
+  | "TARGET_TOO_FAR"
+  | "INVALID_TARGET"
+  | "WAVE_NOT_COMPLETE"
+  | "INVALID_BOSS"
+  | "INVALID_LOADOUT"
+  | "ADMIN_PROFILE_SETUP_REQUIRED";
 
 export interface UserError {
   message: string;
@@ -95,6 +113,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
   MAINTENANCE: "سرویس موقتاً در حال نگهداری است. بعداً برگردید.",
   ADMIN_UNAUTHORIZED: "دسترسی مدیر مجاز نیست یا نشست منقضی شده است.",
   ADMIN_FORBIDDEN: "نقش مدیر اجازه انجام این عملیات را ندارد.",
+  ADMIN_PROFILE_SETUP_REQUIRED: "پروفایل قدیمی به‌صورت خودکار جایگزین نمی‌شود. برای پیوند اولیه، توکن و کد بازیابی همان پروفایل را وارد کنید؛ اگر پروفایل قبلاً پیوند خورده، برای بازیابی توکن کد بازیابی را وارد کنید.",
   REMATCH_NOT_ALLOWED: "بازی مجدد فقط پس از پایان بازی ممکن است.",
   CODE_GENERATION_FAILED: "خطا در ساخت اتاق. دوباره تلاش کنید.",
   INSUFFICIENT_FUNDS: "موجودی شریف‌کوین کافی نیست.",
@@ -122,6 +141,23 @@ export const ERROR_MESSAGES: Record<string, string> = {
   INSUFFICIENT_MANA: "مانای شما برای اجرای این کتاب جادو کافی نیست.",
   MAX_TWO_SPELLBOOKS: "حداکثر ۲ کتاب جادو را می‌توانید هم‌زمان تجهیز کنید.",
   KEY_REQUIRED: "برای باز کردن این صندوقچه قفل‌شده به کلید زنگ‌زده (Rusty key) نیاز دارید.",
+  INVALID_SETTING: "مقدار تنظیم‌شده خارج از محدوده مجاز است.",
+  INVALID_POSITION: "موقعیت بازیکن معتبر نیست؛ بازی را تازه‌سازی کنید.",
+  PLAYER_MOVED_TOO_FAST: "حرکت ثبت‌شده با سرعت مجاز سازگار نیست. چند لحظه صبر کنید و دوباره تلاش کنید.",
+  INVALID_PLAYER_STATE: "وضعیت بازیکن معتبر نیست. بازی را تازه‌سازی کنید.",
+  INVALID_REWARD: "پاداش ارسالی معتبر نیست.",
+  INVALID_AMMO: "وضعیت مهمات معتبر نیست. بازی را تازه‌سازی کنید.",
+  RELOAD_NOT_READY: "خشاب هنوز آماده شلیک نیست.",
+  INTERACTABLE_NOT_FOUND: "این شیء در نقشه فعلی وجود ندارد.",
+  INTERACTABLE_TOO_FAR: "برای تعامل باید به شیء نزدیک‌تر شوید.",
+  INVALID_INTERACTION: "این نوع تعامل در این نقطه امکان‌پذیر نیست.",
+  OBJECTIVE_NOT_FOUND: "هدف این تعامل در نقشه فعلی پیدا نشد.",
+  TARGET_NOT_DOWNED: "هم‌تیمی هدف نیازی به احیا ندارد.",
+  TARGET_TOO_FAR: "برای احیای هم‌تیمی باید نزدیک‌تر شوید.",
+  INVALID_TARGET: "هدف انتخاب‌شده معتبر نیست.",
+  WAVE_NOT_COMPLETE: "موج هنوز به حداقل زمان نبرد نرسیده است؛ چند لحظه دیگر ادامه دهید.",
+  INVALID_BOSS: "شناسه غول این موج معتبر نیست.",
+  INVALID_LOADOUT: "ترکیب تجهیزات انتخاب‌شده معتبر نیست.",
 };
 
 export const GENERIC_ERROR = "خطایی رخ داد. لطفاً دوباره تلاش کنید.";

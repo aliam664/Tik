@@ -282,6 +282,7 @@ export interface LnRoomPlayer {
   arrows: number;
   bullets: number;
   loaded_firearm: boolean;
+  firearm_reload_ready_at?: string | null;
   whetstone_stacks: number;
   has_lantern: boolean;
   rusty_keys: number;
@@ -310,6 +311,7 @@ export interface LnRoomState {
   bosses_defeated: MedievalBossKind[];
   objectives: LnObjectiveState[];
   chests_opened: string[];
+  interactions?: string[];
   world_state: Record<string, unknown>;
   settlement: {
     settled?: boolean;
@@ -336,4 +338,8 @@ export interface LnCreateJoinResponse {
 export interface LnRoomStateResponse {
   seat: 1 | 2 | 3 | null;
   state: LnRoomState;
+  interaction_recorded?: boolean;
+  interaction_reward_coins?: number;
+  combat_reward_coins?: number;
+  combat_reward_kills?: number;
 }

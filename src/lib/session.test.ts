@@ -43,6 +43,17 @@ describe("adminSession", () => {
     adminSession.save({ token: "old", expires_at: new Date(Date.now() - 1000).toISOString() });
     expect(adminSession.load()).toBeNull();
   });
+
+  it.each([
+    "{bad json",
+    JSON.stringify({ token: "", expires_at: new Date(Date.now() + 60_000).toISOString() }),
+    JSON.stringify({ token: "ok", expires_at: "not-a-date" }),
+    JSON.stringify({ token: "ok" }),
+  ])("clears malformed or incomplete stored sessions (%s)", (serialized) => {
+    sessionStorage.setItem("doz:admin-session", serialized);
+    expect(adminSession.load()).toBeNull();
+    expect(sessionStorage.getItem("doz:admin-session")).toBeNull();
+  });
 });
 
 describe("inviteLink", () => {
