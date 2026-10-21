@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Activity,
   Cpu,
@@ -44,8 +44,11 @@ export function AdminSystemPanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
+  const loadingRef = useRef(false);
 
   const load = useCallback(async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     const t0 = performance.now();
     try {
       const res = await adminApi.systemMetrics(token);
@@ -69,6 +72,7 @@ export function AdminSystemPanel({
       }
       setError(user.message);
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   }, [onSessionExpired, token]);
@@ -93,7 +97,12 @@ export function AdminSystemPanel({
       showToast(`${label} با موفقیت انجام شد (${toFaDigits(res.affected)} مورد).`, "success");
       await load();
     } catch (err) {
-      showToast(toUserError(err).message, "error");
+      const user = toUserError(err);
+      if (user.code === "ADMIN_UNAUTHORIZED") {
+        onSessionExpired();
+        return;
+      }
+      showToast(user.message, "error");
     } finally {
       setActionBusy(null);
     }

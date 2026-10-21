@@ -37,6 +37,7 @@ export function AdminOverviewPanel({
   const { showToast } = useToast();
   const [dash, setDash] = useState<AdminDashboardData | null>(null);
   const [sys, setSys] = useState<AdminSystemMetrics | null>(null);
+  const [systemError, setSystemError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -44,12 +45,24 @@ export function AdminOverviewPanel({
     setError(null);
     setLoading(true);
     try {
-      const [d, s] = await Promise.all([
+      const [dashboardResult, systemResult] = await Promise.allSettled([
         adminApi.dashboard(token),
-        adminApi.systemMetrics(token).catch(() => null),
+        adminApi.systemMetrics(token),
       ]);
-      setDash(d);
-      setSys(s);
+      if (dashboardResult.status === "rejected") throw dashboardResult.reason;
+      setDash(dashboardResult.value);
+      if (systemResult.status === "fulfilled") {
+        setSys(systemResult.value);
+        setSystemError(null);
+      } else {
+        const user = toUserError(systemResult.reason);
+        if (user.code === "ADMIN_UNAUTHORIZED") {
+          onSessionExpired();
+          return;
+        }
+        setSys(null);
+        setSystemError(user.message);
+      }
     } catch (err) {
       const user = toUserError(err);
       if (user.code === "ADMIN_UNAUTHORIZED") {
@@ -185,6 +198,8 @@ export function AdminOverviewPanel({
             detail={`${sys.connections.total} / ${sys.connections.max_connections} Conn`}
           />
         </div>
+      ) : systemError ? (
+        <p className="inline-warning" role="status">داده‌های منابع سرور دریافت نشد: {systemError}</p>
       ) : null}
 
       <div className="stat-grid">

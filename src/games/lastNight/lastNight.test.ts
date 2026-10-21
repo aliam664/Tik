@@ -15,6 +15,8 @@ import {
   MEDIEVAL_SHOP_ITEMS,
   MEDIEVAL_WEAPONS,
   SHERIFF_COIN_NAME,
+  WORLD_HEIGHT,
+  WORLD_WIDTH,
 } from "./catalog";
 import {
   applyFrostEffect,
@@ -263,12 +265,35 @@ describe("Last Night — Medieval Survival Rules & Simulation", () => {
     expect(getBossPhase(200, 1000)).toBe(3);
   });
 
-  it("creates medieval interactables (torches, chests, eggs, runes, relics, gates) for all 4 maps", () => {
+  it("creates unique, in-bounds interactables (torches, chests, eggs, runes, relics, gates) for all maps", () => {
     for (const m of MEDIEVAL_MAPS) {
       expect(m.previewUrl).toMatch(/^\/assets\/last-night\/map-.*\.png$/);
       const items = createMapInteractables(m.id);
       expect(items.length).toBeGreaterThanOrEqual(5);
       expect(items.some((i) => i.requiresKey)).toBe(true);
+      expect(new Set(items.map((item) => item.id)).size).toBe(items.length);
+      for (const item of items) {
+        expect(item.x).toBeGreaterThanOrEqual(0);
+        expect(item.x).toBeLessThanOrEqual(WORLD_WIDTH);
+        expect(item.y).toBeGreaterThanOrEqual(0);
+        expect(item.y).toBeLessThanOrEqual(WORLD_HEIGHT);
+      }
+    }
+  });
+
+  it("builds every wave with the expected roster and unique, in-bounds spawn points", () => {
+    for (let wave = 1; wave <= 10; wave += 1) {
+      const enemies = createWaveEnemies(wave);
+      const expectedBosses = getBossForWave(wave) ? 1 : 0;
+      expect(enemies).toHaveLength(7 + wave * 2 + expectedBosses);
+      expect(new Set(enemies.map((enemy) => enemy.id)).size).toBe(enemies.length);
+      expect(new Set(enemies.map((enemy) => `${enemy.x}:${enemy.y}`)).size).toBe(enemies.length);
+      for (const enemy of enemies) {
+        expect(enemy.x).toBeGreaterThanOrEqual(0);
+        expect(enemy.x).toBeLessThanOrEqual(WORLD_WIDTH);
+        expect(enemy.y).toBeGreaterThanOrEqual(0);
+        expect(enemy.y).toBeLessThanOrEqual(WORLD_HEIGHT);
+      }
     }
   });
 

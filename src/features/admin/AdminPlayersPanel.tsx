@@ -85,7 +85,12 @@ export function AdminPlayersPanel({
       const res = await adminApi.getPlayer(token, id);
       setDetail(res);
     } catch (err) {
-      showToast(toUserError(err).message, "error");
+      const user = toUserError(err);
+      if (user.code === "ADMIN_UNAUTHORIZED") {
+        onSessionExpired();
+        return;
+      }
+      showToast(user.message, "error");
       setSelected(null);
     }
   };

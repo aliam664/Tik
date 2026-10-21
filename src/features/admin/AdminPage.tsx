@@ -58,6 +58,7 @@ export function AdminPage() {
 
   const [session, setSession] = useState(() => adminSession.load());
   const [verifying, setVerifying] = useState<boolean>(() => !!adminSession.load());
+  const [verificationError, setVerificationError] = useState<string | null>(null);
   const [adminUsername, setAdminUsername] = useState("admin");
   const [tab, setTab] = useState<AdminTabId>("overview");
 
@@ -77,6 +78,7 @@ export function AdminPage() {
   const handleSessionExpired = useCallback(() => {
     adminSession.clear();
     setSession(null);
+    setVerificationError(null);
     showToast("نشست مدیریت منقضی شد. دوباره وارد شوید.", "info");
   }, [showToast]);
 
@@ -96,11 +98,19 @@ export function AdminPage() {
           setSession(null);
         } else {
           setAdminUsername(res.username);
+          setVerificationError(null);
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
-          adminSession.clear();
-          setSession(null);
+          const user = toUserError(err);
+          if (user.code === "ADMIN_UNAUTHORIZED") {
+            adminSession.clear();
+            setSession(null);
+          } else {
+            // A transient network/configuration failure does not invalidate the
+            // locally stored credential. Let the signed RPCs decide access.
+            setVerificationError(user.message);
+          }
         }
       } finally {
         if (!cancelled) setVerifying(false);
@@ -110,6 +120,31 @@ export function AdminPage() {
       cancelled = true;
     };
   }, []);
+
+  const retrySessionVerification = async () => {
+    if (!session) return;
+    setVerifying(true);
+    setVerificationError(null);
+    try {
+      const res = await adminApi.verify(session.token);
+      if (!res.ok) {
+        adminSession.clear();
+        setSession(null);
+      } else {
+        setAdminUsername(res.username);
+      }
+    } catch (err) {
+      const user = toUserError(err);
+      if (user.code === "ADMIN_UNAUTHORIZED") {
+        adminSession.clear();
+        setSession(null);
+      } else {
+        setVerificationError(user.message);
+      }
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,6 +158,7 @@ export function AdminPage() {
       const res = await adminApi.login(username.trim(), password);
       adminSession.save(res);
       setSession(res);
+      setVerificationError(null);
       setAdminUsername(username.trim());
       setPassword("");
       showToast("خوش آمدید", "success");
@@ -163,7 +199,9 @@ export function AdminPage() {
       setCurPw("");
       setNewPw("");
     } catch (err) {
-      setPwError(toUserError(err).message);
+      const user = toUserError(err);
+      if (user.code === "ADMIN_UNAUTHORIZED") handleSessionExpired();
+      setPwError(user.message);
     } finally {
       setPwLoading(false);
     }
@@ -263,6 +301,16 @@ export function AdminPage() {
           </Button>
         </div>
       </header>
+
+      {verificationError ? (
+        <div className="inline-warning" role="status">
+          <ShieldAlert size={16} aria-hidden="true" />
+          <span>بررسی نشست به‌دلیل خطای ارتباطی کامل نشد؛ نشست محلی پاک نشده است. {verificationError}</span>
+          <Button size="sm" variant="secondary" loading={verifying} onClick={() => void retrySessionVerification()}>
+            تلاش دوباره
+          </Button>
+        </div>
+      ) : null}
 
       <nav className="admin-tabs" aria-label="بخش‌های پنل مدیریت">
         {ADMIN_TABS_META.map((t) => (

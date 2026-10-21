@@ -456,21 +456,20 @@ export function createWaveEnemies(wave: number): SimEnemy[] {
     const kind = pool[i % pool.length];
     const spec = getEnemySpec(kind);
     const edge = i % 4;
-    let x = 100;
-    let y = 100;
-    if (edge === 0) {
-      x = 90 + ((i * 173) % (WORLD_WIDTH - 180));
-      y = 65;
-    } else if (edge === 1) {
-      x = WORLD_WIDTH - 75;
-      y = 90 + ((i * 137) % (WORLD_HEIGHT - 180));
-    } else if (edge === 2) {
-      x = 90 + ((i * 197) % (WORLD_WIDTH - 180));
-      y = WORLD_HEIGHT - 70;
-    } else {
-      x = 75;
-      y = 90 + ((i * 157) % (WORLD_HEIGHT - 180));
-    }
+    const x =
+      edge === 0
+        ? 90 + ((i * 173) % (WORLD_WIDTH - 180))
+        : edge === 1
+          ? WORLD_WIDTH - 75
+          : edge === 2
+            ? 90 + ((i * 197) % (WORLD_WIDTH - 180))
+            : 75;
+    const y =
+      edge === 0
+        ? 65
+        : edge === 2
+          ? WORLD_HEIGHT - 70
+          : 90 + ((i * (edge === 1 ? 137 : 157)) % (WORLD_HEIGHT - 180));
 
     const hpScale = 1 + (clampedWave - 1) * 0.1;
     const scaledHp = Math.round(spec.maxHp * hpScale);

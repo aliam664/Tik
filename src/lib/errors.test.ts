@@ -14,9 +14,26 @@ describe("toUserError", () => {
     expect(res.message).toContain("تعداد درخواست");
   });
 
+  it("explains why legacy admin profiles require a secure token-and-recovery link", () => {
+    const res = toUserError(new ApiError("ADMIN_PROFILE_SETUP_REQUIRED", true));
+    expect(res.known).toBe(true);
+    expect(res.message).toContain("کد بازیابی");
+  });
+
   it("maps network failures", () => {
     const res = toUserError({ message: "TypeError: Failed to fetch" });
     expect(res.message).toBe(NETWORK_ERROR);
+  });
+
+  it("maps Last Night movement, interaction, and transition errors safely", () => {
+    const tooFar = toUserError(new ApiError("INTERACTABLE_TOO_FAR", true));
+    expect(tooFar.message).toContain("نزدیک‌تر");
+
+    const invalidMovement = toUserError(new ApiError("PLAYER_MOVED_TOO_FAST", true));
+    expect(invalidMovement.message).toContain("سرعت مجاز");
+
+    const earlyClear = toUserError(new ApiError("WAVE_NOT_COMPLETE", true));
+    expect(earlyClear.message).toContain("حداقل زمان");
   });
 
   it("falls back to a generic message and never leaks technical detail", () => {

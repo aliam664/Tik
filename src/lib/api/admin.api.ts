@@ -399,11 +399,17 @@ export const adminApi = {
 
   /* --------------------- Admin AI Arena & Matchmaking --------------------- */
 
-  ensureProfile(token: string, displayName?: string, existingPlayerToken?: string | null) {
+  ensureProfile(
+    token: string,
+    displayName?: string,
+    existingPlayerToken?: string | null,
+    existingRecoveryCode?: string | null,
+  ) {
     return rpc<AdminEnsureProfileResponse>("admin_ensure_profile", {
       p_admin_token: token,
       p_display_name: displayName ?? null,
       p_existing_token: existingPlayerToken ?? null,
+      p_existing_recovery_code: existingRecoveryCode ?? null,
     });
   },
 

@@ -1974,7 +1974,7 @@
 .ln-canvas-stage canvas {
   width: 100% !important;
   height: auto !important;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 32 / 19;
   display: block;
   image-rendering: pixelated;
 }

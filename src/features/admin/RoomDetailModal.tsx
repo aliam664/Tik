@@ -61,7 +61,12 @@ export function RoomDetailModal({
       await load();
       onUpdated?.();
     } catch (err) {
-      showToast(toUserError(err).message, "error");
+      const user = toUserError(err);
+      if (user.code === "ADMIN_UNAUTHORIZED") {
+        onSessionExpired();
+        return;
+      }
+      showToast(user.message, "error");
     } finally {
       setKicking(null);
     }

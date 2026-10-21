@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { EmptyState, LoadingSpinner } from "@/components/ui/Feedback";
+import { EmptyState, ErrorState, LoadingSpinner } from "@/components/ui/Feedback";
 import { useToast } from "@/components/ui/Toast";
 import { adminApi } from "@/lib/api";
 import { toUserError } from "@/lib/errors";
@@ -17,8 +17,11 @@ export function AdminAuditPanel({
   const [items, setItems] = useState<AuditRow[] | null>(null);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const res = await adminApi.audit(token, 100, 0);
       setItems(res.items);
@@ -29,6 +32,7 @@ export function AdminAuditPanel({
         onSessionExpired();
         return;
       }
+      setError(user.message);
       showToast(user.message, "error");
     } finally {
       setLoading(false);
@@ -47,8 +51,19 @@ export function AdminAuditPanel({
     );
   }
 
+  if (error && !items) {
+    return (
+      <ErrorState
+        title="خطا در دریافت گزارش عملیات"
+        description={error}
+        onRetry={() => void load()}
+      />
+    );
+  }
+
   return (
     <section className="admin-panel" aria-label="گزارش عملیات مدیریتی">
+      {error ? <p className="inline-warning" role="status">گزارش قدیمی نمایش داده می‌شود: {error}</p> : null}
       {items && items.length === 0 ? (
         <EmptyState title="گزارشی وجود ندارد" description="عملیات مدیریتی اینجا ثبت می‌شوند." />
       ) : items ? (
