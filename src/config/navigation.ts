@@ -11,6 +11,8 @@ export interface SiteNavItem {
 
 export const MAIN_NAV_ITEMS: readonly SiteNavItem[] = [
   { path: "/", label: "خانه", exact: true },
+  { path: "/games/code-breaker", label: "رمزگشا (کد ۴ رقمی)" },
+  { path: "/games/word-cipher", label: "رازواژه (حدس و تداعی)" },
   { path: "/games/last-night", label: "Last Night (بقای قرون‌وسطایی)" },
   { path: "/play", label: "دوز رقابتی" },
   { path: "/leaderboard", label: "رده‌بندی" },

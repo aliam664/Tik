@@ -471,7 +471,7 @@
 }
 
 .game-card:hover {
-  border-color: var(--border-gold);
+  border-color: var(--game-accent, var(--border-gold));
   transform: translateY(-3px);
   box-shadow: var(--shadow-m);
 }
@@ -482,7 +482,7 @@
   inset-inline: 0;
   top: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  background: linear-gradient(90deg, transparent, var(--game-accent, var(--gold)), transparent);
   opacity: 0.7;
 }
 

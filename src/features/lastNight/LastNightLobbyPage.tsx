@@ -111,7 +111,7 @@ export function LastNightLobbyPage() {
               خزانه و کیف پول {SHERIFF_COIN_NAME}
             </Link>
             <Link to="/" className="btn btn--ghost btn--sm">
-              بازگشت به هاب بازی‌ها (دوز + Last Night)
+              بازگشت به هاب بازی‌ها
             </Link>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { CoinAmount, ShCoin } from "@/components/ui/Coin";
 import { EmptyState, ErrorState, LoadingSpinner } from "@/components/ui/Feedback";
 import { useToast } from "@/components/ui/Toast";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { getActiveGames } from "@/games/registry";
 import { api } from "@/lib/api";
 import { toUserError, type UserError } from "@/lib/errors";
 import { toFaDigits } from "@/lib/format";
@@ -90,9 +91,14 @@ export function ShopPage() {
               <ShoppingBag size={22} aria-hidden="true" /> فروشگاه و خزانه Sheriff Coin
             </h1>
             <p className="card__sub">
-              موجودی کیف پول رسمی شما با نام <strong>Sheriff Coin</strong> در هر دو بازی{" "}
-              <strong>دوز کلاسیک</strong> و{" "}
-              <strong>Last Night — Medieval Survival</strong> یکپارچه است.
+              موجودی کیف پول رسمی شما با نام <strong>Sheriff Coin</strong> در تمام بازی‌های فعال پلتفرم (
+              {getActiveGames().map((g, idx) => (
+                <span key={g.id}>
+                  {idx > 0 ? " · " : ""}
+                  <strong>{g.title}</strong>
+                </span>
+              ))}
+              ) یکپارچه است.
             </p>
           </div>
           {balance !== null ? <CoinAmount amount={balance} size={22} /> : null}
