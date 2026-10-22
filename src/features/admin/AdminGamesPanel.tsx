@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { CoinAmount } from "@/components/ui/Coin";
 import { EmptyState, LoadingSpinner } from "@/components/ui/Feedback";
@@ -8,6 +8,8 @@ import { adminApi } from "@/lib/api";
 import { toUserError } from "@/lib/errors";
 import { formatDateTime, toFaDigits } from "@/lib/format";
 import type { AdminGameRow } from "@/types/api";
+
+const PAGE_SIZE = 50;
 
 export function AdminGamesPanel({
   token,
@@ -22,15 +24,17 @@ export function AdminGamesPanel({
   const [rooms, setRooms] = useState<AdminGameRow[] | null>(null);
   const [roomsTotal, setRoomsTotal] = useState(0);
   const [modeFilter, setModeFilter] = useState<string>("");
+  const [matchOffset, setMatchOffset] = useState(0);
+  const [roomOffset, setRoomOffset] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(
-    async (modeVal = modeFilter) => {
+    async (modeVal = modeFilter, nextMatchOffset = matchOffset, nextRoomOffset = roomOffset) => {
       setLoading(true);
       try {
         const [mRes, gRes] = await Promise.all([
-          adminApi.listMatches(token, modeVal || null, 50, 0),
-          adminApi.listGames(token, 50, 0),
+          adminApi.listMatches(token, modeVal || null, PAGE_SIZE, nextMatchOffset),
+          adminApi.listGames(token, PAGE_SIZE, nextRoomOffset),
         ]);
         setMatches(mRes.items ?? []);
         setMatchesTotal(mRes.total ?? 0);
@@ -47,11 +51,11 @@ export function AdminGamesPanel({
         setLoading(false);
       }
     },
-    [modeFilter, onSessionExpired, showToast, token],
+    [matchOffset, modeFilter, onSessionExpired, roomOffset, showToast, token],
   );
 
   useEffect(() => {
-    void load("");
+    void load("", 0, 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -85,7 +89,8 @@ export function AdminGamesPanel({
                 className={`chip ${modeFilter === f.id ? "chip--active" : ""}`}
                 onClick={() => {
                   setModeFilter(f.id);
-                  void load(f.id);
+                  setMatchOffset(0);
+                  void load(f.id, 0, roomOffset);
                 }}
               >
                 {f.label}
@@ -95,7 +100,7 @@ export function AdminGamesPanel({
               variant="ghost"
               size="sm"
               icon={<RefreshCw size={14} />}
-              onClick={() => void load(modeFilter)}
+              onClick={() => void load(modeFilter, matchOffset, roomOffset)}
             >
               تازه‌سازی
             </Button>
@@ -120,7 +125,7 @@ export function AdminGamesPanel({
               </thead>
               <tbody>
                 {matches.map((m, i) => (
-                  <tr key={i}>
+                  <tr key={`${String(m.room_code)}-${String(m.finished_at)}-${i}`}>
                     <td className="ltr mono">{String(m.room_code ?? "—")}</td>
                     <td>
                       {m.mode === "stakes" ? `شرطی (${toFaDigits(Number(m.stake))} sh)` : "رده‌بندی"}
@@ -146,6 +151,40 @@ export function AdminGamesPanel({
                 ))}
               </tbody>
             </table>
+            <div className="ops-pager">
+              <span>
+                نمایش {toFaDigits(matchesTotal === 0 ? 0 : matchOffset + 1)}–
+                {toFaDigits(Math.min(matchOffset + matches.length, matchesTotal))} از {toFaDigits(matchesTotal)}
+              </span>
+              <div className="row-actions">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={matchOffset <= 0 || loading}
+                  icon={<ChevronRight size={14} />}
+                  onClick={() => {
+                    const next = Math.max(0, matchOffset - PAGE_SIZE);
+                    setMatchOffset(next);
+                    void load(modeFilter, next, roomOffset);
+                  }}
+                >
+                  صفحه قبل
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={matchOffset + PAGE_SIZE >= matchesTotal || loading}
+                  onClick={() => {
+                    const next = matchOffset + PAGE_SIZE;
+                    setMatchOffset(next);
+                    void load(modeFilter, next, roomOffset);
+                  }}
+                >
+                  صفحه بعد
+                  <ChevronLeft size={14} aria-hidden="true" />
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -187,6 +226,40 @@ export function AdminGamesPanel({
                 ))}
               </tbody>
             </table>
+            <div className="ops-pager">
+              <span>
+                نمایش {toFaDigits(roomsTotal === 0 ? 0 : roomOffset + 1)}–
+                {toFaDigits(Math.min(roomOffset + (rooms?.length ?? 0), roomsTotal))} از {toFaDigits(roomsTotal)}
+              </span>
+              <div className="row-actions">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={roomOffset <= 0 || loading}
+                  icon={<ChevronRight size={14} />}
+                  onClick={() => {
+                    const next = Math.max(0, roomOffset - PAGE_SIZE);
+                    setRoomOffset(next);
+                    void load(modeFilter, matchOffset, next);
+                  }}
+                >
+                  صفحه قبل
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={roomOffset + PAGE_SIZE >= roomsTotal || loading}
+                  onClick={() => {
+                    const next = roomOffset + PAGE_SIZE;
+                    setRoomOffset(next);
+                    void load(modeFilter, matchOffset, next);
+                  }}
+                >
+                  صفحه بعد
+                  <ChevronLeft size={14} aria-hidden="true" />
+                </Button>
+              </div>
+            </div>
           </div>
         ) : null}
       </div>

@@ -7,8 +7,8 @@ import { CodeBreakerArenaView } from "./CodeBreakerArenaView";
 describe("CodeBreakerArenaView UI & Platform Integration", () => {
   it("keeps all 4 games (Doz Classic, Last Night, Word Cipher, Code Breaker) active side-by-side in PLATFORM_GAMES", () => {
     const ids = PLATFORM_GAMES.map((g) => g.id);
-    expect(ids).toEqual(["doz", "last_night", "word_cipher", "code_breaker"]);
-    expect(getActiveGames()).toHaveLength(4);
+    expect(ids).toEqual(["doz", "last_night", "word_cipher", "code_breaker", "sheriff_blast"]);
+    expect(getActiveGames()).toHaveLength(5);
   });
 
   it("renders dual guess history panels, position tiles, counts, timestamps, handles synchronous keyboard burst, and reveals secret only on finish", () => {

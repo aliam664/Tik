@@ -24,13 +24,13 @@
 }
 
 .site-header__inner {
-  max-width: var(--container);
+  max-width: var(--container-wide);
   margin-inline: auto;
-  padding: 12px var(--page-pad);
+  padding: 10px var(--page-pad);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 12px;
 }
 
 .site-header__credit {
@@ -68,13 +68,16 @@
 
 .main-nav {
   display: flex;
-  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
 }
 
 .main-nav__link {
-  font-size: 14px;
+  font-size: 13.5px;
+  font-weight: 600;
   color: var(--text-2);
-  padding: 7px 13px;
+  padding: 8px 11px;
   border-radius: var(--radius-s);
   transition: color var(--tr-fast), background var(--tr-fast);
 }
@@ -166,6 +169,7 @@
 
 .site-footer__links a {
   color: var(--text-2);
+  font-weight: 600;
 }
 
 .site-footer__links a:hover {
@@ -256,11 +260,11 @@
 
 .hero-grid {
   display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  gap: 34px;
+  grid-template-columns: 1.08fr 0.92fr;
+  gap: 36px;
   align-items: center;
   text-align: right;
-  padding: 18px 0 8px;
+  padding: 28px 0 12px;
 }
 
 .hero-grid .hero__actions {
@@ -459,11 +463,14 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: var(--surface);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 42%),
+    var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-l);
-  padding: 20px;
+  padding: 18px 18px 16px;
   overflow: hidden;
+  min-height: 100%;
   transition:
     border-color var(--tr-fast),
     transform var(--tr-fast) var(--ease-out),
@@ -558,12 +565,34 @@
 .game-card__spec {
   font-family: var(--font-mono);
   font-size: 10.5px;
-  color: var(--text-3);
+  color: var(--text-2);
   border: 1px solid var(--border);
   background: rgba(0, 0, 0, 0.2);
   border-radius: 6px;
   padding: 3px 8px;
   direction: ltr;
+}
+
+.game-card__banner {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--game-accent, var(--gold)) 28%, var(--border));
+  aspect-ratio: 16 / 9;
+  margin-bottom: 2px;
+  background: var(--bg);
+}
+
+.game-card__banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.game-card__cta {
+  margin-top: 4px;
+  align-self: stretch;
+  justify-content: center;
 }
 
 /* --------------------------------- Tier table --------------------------------- */
@@ -646,29 +675,34 @@
   align-items: center;
   gap: 7px;
   font-size: 12.5px;
-  color: var(--accent-strong);
-  background: var(--accent-soft);
-  border: 1px solid rgba(124, 108, 255, 0.35);
-  padding: 5px 13px;
+  font-weight: 700;
+  color: var(--gold-strong);
+  background: var(--gold-soft);
+  border: 1px solid var(--border-gold);
+  padding: 6px 13px;
   border-radius: var(--radius-full);
 }
 
 .hero__title {
-  font-size: clamp(28px, 6.4vw, 44px);
-  font-weight: 700;
-  line-height: 1.35;
-  max-width: 22ch;
+  font-size: clamp(30px, 6.2vw, 48px);
+  font-weight: 800;
+  line-height: 1.28;
+  letter-spacing: -0.02em;
+  max-width: 16ch;
+  margin-top: 12px;
 }
 
 .hero__accent {
-  color: var(--accent-strong);
+  color: var(--gold-strong);
   position: relative;
 }
 
 .hero__sub {
   color: var(--text-2);
-  font-size: 15.5px;
-  max-width: 58ch;
+  font-size: 16.5px;
+  line-height: 1.75;
+  max-width: 38ch;
+  margin-top: 10px;
 }
 
 .hero__actions {
@@ -676,7 +710,31 @@
   gap: 12px;
   flex-wrap: wrap;
   justify-content: center;
-  margin-top: 4px;
+  margin-top: 18px;
+}
+
+.hero__proof {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.proof-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 7px 12px;
+}
+
+.proof-chip strong {
+  color: var(--text);
 }
 
 .hero__status {
@@ -775,7 +833,7 @@
 
 .home-notes {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   margin-top: 14px;
 }
@@ -1567,10 +1625,12 @@
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  padding: 7px 2px 5px;
+  padding: 8px 2px 6px;
+  min-height: 48px;
   border-radius: var(--radius-s);
-  font-size: 10.5px;
-  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-2);
   transition: color var(--tr-fast), background var(--tr-fast);
 }
 
@@ -1597,6 +1657,12 @@
   }
   .mobile-bottom-nav {
     display: block;
+  }
+  .site-main {
+    padding-bottom: 72px;
+  }
+  .site-footer {
+    margin-bottom: 64px;
   }
 }
 

@@ -1,4 +1,5 @@
 import type {
+  AdminCrashOps,
   AdminDashboardData,
   AdminEnsureProfileResponse,
   AdminGameRow,
@@ -48,6 +49,12 @@ export const adminApi = {
 
   dashboard(token: string) {
     return rpc<AdminDashboardData>("admin_get_dashboard", {
+      p_admin_token: token,
+    });
+  },
+
+  crashOps(token: string) {
+    return rpc<AdminCrashOps>("admin_crash_ops", {
       p_admin_token: token,
     });
   },

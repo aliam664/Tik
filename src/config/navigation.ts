@@ -1,7 +1,10 @@
 /**
  * Centralized navigation & admin feature registry.
- * To add a new site page or admin panel tab in the future, register it here.
+ * Game links come from `PLATFORM_GAMES` — do not hardcode a new title here.
+ * See HOW_TO_ADD_A_NEW_GAME.md
  */
+
+import { getHeaderNavGames } from "@/games/registry";
 
 export interface SiteNavItem {
   path: string;
@@ -11,21 +14,19 @@ export interface SiteNavItem {
 
 export const MAIN_NAV_ITEMS: readonly SiteNavItem[] = [
   { path: "/", label: "خانه", exact: true },
-  { path: "/games/code-breaker", label: "رمزگشا (کد ۴ رقمی)" },
-  { path: "/games/word-cipher", label: "رازواژه (حدس و تداعی)" },
-  { path: "/games/last-night", label: "Last Night (بقای قرون‌وسطایی)" },
-  { path: "/play", label: "دوز رقابتی" },
+  { path: "/play", label: "بازی کن" },
+  ...getHeaderNavGames(),
   { path: "/leaderboard", label: "رده‌بندی" },
-  { path: "/shop", label: "فروشگاه (Sheriff Coin)" },
+  { path: "/shop", label: "فروشگاه" },
   { path: "/profile", label: "پروفایل" },
-  { path: "/rules", label: "قوانین" },
-  { path: "/join", label: "ورود به اتاق" },
-] as const;
+  { path: "/join", label: "ورود با کد" },
+];
 
 export type AdminTabId =
   | "overview"
   | "system"
   | "arena"
+  | "blast"
   | "players"
   | "rooms"
   | "economy"
@@ -42,15 +43,16 @@ export interface AdminTabMeta {
 }
 
 export const ADMIN_TABS_META: readonly AdminTabMeta[] = [
-  { id: "overview", label: "داشبورد و نمودارها" },
-  { id: "system", label: "منابع سرور (CPU/RAM)", badge: "زنده" },
-  { id: "arena", label: "میدان نبرد هوش مصنوعی", badge: "AI" },
-  { id: "players", label: "بازیکنان (سکه/XP/بن)" },
-  { id: "rooms", label: "اتاق‌ها و اخراج" },
-  { id: "economy", label: "مرکز اقتصاد" },
-  { id: "integrity", label: "ضدتقلب و صف" },
+  { id: "overview", label: "مرکز فرمان" },
+  { id: "system", label: "منابع سرور", badge: "زنده" },
+  { id: "arena", label: "عرصه هوش مصنوعی", badge: "AI" },
+  { id: "blast", label: "انفجار شریف", badge: "LIVE" },
+  { id: "players", label: "پرونده بازیکنان", badge: "SOC" },
+  { id: "rooms", label: "اتاق‌ها" },
+  { id: "economy", label: "اقتصاد" },
+  { id: "integrity", label: "ضدتقلب" },
   { id: "seasons", label: "فصل‌ها" },
-  { id: "games", label: "تاریخچه بازی‌ها" },
-  { id: "settings", label: "تنظیمات و اعلان‌ها" },
+  { id: "games", label: "تاریخچه بازی" },
+  { id: "settings", label: "تنظیمات" },
   { id: "audit", label: "گزارش عملیات" },
 ] as const;

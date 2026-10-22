@@ -38,10 +38,10 @@
   --error: #ff6577;
   --error-soft: rgba(255, 101, 119, 0.12);
 
-  /* Text */
-  --text: #f4f5fa;
-  --text-2: #9ca3b4;
-  --text-3: #6b7285;
+  /* Text — off-white, not pure white; muted still WCAG-readable on carbon */
+  --text: #eef1f7;
+  --text-2: #c5cbd8;
+  --text-3: #9aa3b6;
 
   /* Lines — precise 1px borders */
   --border: rgba(255, 255, 255, 0.09);
@@ -56,8 +56,31 @@
   --shadow-s: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.22);
   --shadow-m: 0 4px 12px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.32);
   --shadow-l: 0 12px 40px rgba(0, 0, 0, 0.45);
-  --shadow-gold: 0 4px 18px -6px rgba(229, 169, 60, 0.45);
+  --shadow-1: var(--shadow-s);
+  --shadow-gold: 0 4px 22px -6px rgba(229, 169, 60, 0.55);
   --ring: 0 0 0 2px var(--bg), 0 0 0 4px rgba(229, 169, 60, 0.75);
+
+  /* Aliases used by game arenas (Word Cipher / Code Breaker) */
+  --surface-1: var(--surface);
+  --bg-0: var(--bg);
+  --radius-md: var(--radius-m);
+  --radius-lg: var(--radius-l);
+  --radius-xl: 28px;
+  --shadow-md: var(--shadow-m);
+  --shadow-lg: var(--shadow-l);
+  --text-primary: var(--text);
+  --text-secondary: var(--text-2);
+  --text-muted: var(--text-3);
+  --border-subtle: var(--border);
+  --gold-400: var(--gold-strong);
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
 
   /* Typography */
   --font:

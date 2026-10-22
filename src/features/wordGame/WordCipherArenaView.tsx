@@ -207,10 +207,11 @@ export function WordCipherArenaView({
   if (state.status === "finished") {
     const winnerPlayer = state.players.find((p) => p.seat === state.winner_seat);
     return (
-      <div className="stack stack--lg">
-        <Card className="stack stack--md">
+      <div className="wg-arena stack stack--lg">
+        <Card framed className="stack stack--md">
           <div className="row row--between row--wrap">
             <div className="stack stack--xs">
+              <span className="g-kicker">MATCH REPORT</span>
               <Badge tone="gold">پایان مسابقه رازواژه · بازی #{state.game_number}</Badge>
               <h2>
                 {state.is_draw
@@ -311,10 +312,19 @@ export function WordCipherArenaView({
         ? round.guesser_seat
         : round.clue_giver_seat;
 
+  const timerRatio =
+    countdown !== null && state.rules.roundTimerSeconds > 0
+      ? Math.max(0, Math.min(1, countdown / state.rules.roundTimerSeconds))
+      : null;
+
   return (
-    <div className="stack stack--lg">
+    <div className="wg-arena stack stack--lg">
       {/* Top Scoreboard & Live Role HUD */}
-      <div className="wg-hud">
+      <div className="wg-hud g-frame">
+        <span className="g-frame__c g-frame__c--tl" aria-hidden="true" />
+        <span className="g-frame__c g-frame__c--tr" aria-hidden="true" />
+        <span className="g-frame__c g-frame__c--bl" aria-hidden="true" />
+        <span className="g-frame__c g-frame__c--br" aria-hidden="true" />
         {p1 && (
           <div
             className={`wg-seat-card ${activeTurnSeat === p1.seat ? "wg-seat-card--active" : ""} ${p1.seat === seat ? "wg-seat-card--me" : ""}`}
@@ -339,20 +349,25 @@ export function WordCipherArenaView({
         )}
 
         <div className="wg-hud-center">
+          <span className="g-vs" aria-hidden="true">VS</span>
           <Badge tone="gold">
             راند {state.current_round} از {state.total_rounds}
           </Badge>
           {countdown !== null && round?.phase !== "round_result" && (
-            <span
-              style={{
-                fontWeight: 800,
-                fontSize: "0.95rem",
-                color: countdown <= 20 ? "#f87171" : "#94a3b8",
-              }}
-            >
-              ⏱ {Math.floor(countdown / 60)}:
-              {String(countdown % 60).padStart(2, "0")}
-            </span>
+            <>
+              <span className={`wg-timer ${countdown <= 20 ? "wg-timer--urgent" : ""}`}>
+                ⏱ {Math.floor(countdown / 60)}:
+                {String(countdown % 60).padStart(2, "0")}
+              </span>
+              {timerRatio !== null && (
+                <div className="wg-timer-track" aria-hidden="true">
+                  <div
+                    className={`wg-timer-fill ${countdown <= 20 ? "wg-timer-fill--urgent" : ""}`}
+                    style={{ width: `${timerRatio * 100}%` }}
+                  />
+                </div>
+              )}
+            </>
           )}
           <div className="row row--xs">
             <Button size="sm" variant="ghost" onClick={toggleSound}>
@@ -391,7 +406,7 @@ export function WordCipherArenaView({
       {/* Live Evaluation Banner after Guess */}
       {evaluation && round?.phase !== "selecting_word" && (
         <div
-          className={`wg-guess-item wg-outcome-${evaluation.outcome}`}
+          className={`wg-guess-item wg-eval-banner wg-outcome-${evaluation.outcome}`}
           role="status"
           aria-live="polite"
         >
@@ -409,9 +424,10 @@ export function WordCipherArenaView({
           PHASE 1: Clue-Giver Selects Secret Word from 4x4 (16 Cards)
           ===================================================================== */}
       {round?.phase === "selecting_word" && my_role === "clue_giver" && (
-        <Card className="stack stack--md">
+        <Card framed className="stack stack--md">
           <div className="row row--between row--wrap">
             <div className="stack stack--xs">
+              <span className="g-kicker">16-CARD TABLE</span>
               <Badge tone="gold">نوبت شما — نقش راهنما</Badge>
               <h2>یکی از ۱۶ واژه زیر را به‌عنوان «واژه مخفی» انتخاب کنید</h2>
               <p className="muted">
@@ -472,7 +488,8 @@ export function WordCipherArenaView({
 
       {/* Waiting Screen for Guesser while Clue-Giver Selects from 16 Cards */}
       {round?.phase === "selecting_word" && my_role !== "clue_giver" && (
-        <Card className="stack stack--sm" style={{ textAlign: "center", padding: "2.5rem 1.5rem" }}>
+        <Card className="stack stack--sm wg-waiting">
+          <div className="wg-waiting__orb" aria-hidden="true" />
           <div>
             <Badge tone="info">نوبت شما در این راند: حدس‌زننده 🔍</Badge>
           </div>
@@ -557,7 +574,7 @@ export function WordCipherArenaView({
 
             {/* Clue-Giver Form */}
             {my_role === "clue_giver" && round.phase === "giving_clue" && (
-              <form onSubmit={handleSendClue} className="stack stack--sm">
+              <form onSubmit={handleSendClue} className="stack stack--sm wg-composer">
                 <label className="stack stack--xs">
                   <span style={{ fontWeight: 700 }}>
                     {round.clues.length === 0
@@ -632,7 +649,7 @@ export function WordCipherArenaView({
 
             {/* Guesser Input Form */}
             {my_role === "guesser" && round.phase === "guessing" && (
-              <form onSubmit={handleSendGuess} className="stack stack--sm">
+              <form onSubmit={handleSendGuess} className="stack stack--sm wg-composer">
                 <label className="stack stack--xs">
                   <span style={{ fontWeight: 700 }}>
                     حدس شما چیست؟ (تلاش {round.guesses.length + 1} از{" "}

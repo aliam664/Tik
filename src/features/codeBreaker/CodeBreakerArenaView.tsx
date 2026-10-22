@@ -51,7 +51,7 @@ function AttemptCard({
       className={`cb-attempt-row ${isLatest ? "cb-attempt-row--latest" : ""} ${guess.is_winner ? "cb-attempt-row--winner" : ""}`}
     >
       {/* Left Meta: Attempt #, Owner, Server Timestamp, Elapsed Timer, Global Order & Status */}
-      <div className="stack stack--xs" style={{ minWidth: 185 }}>
+      <div className="cb-attempt-row__meta">
         <div className="row row--xs row--wrap">
           <Badge tone={isMine ? "success" : "info"}>
             {isMine ? "شما" : `رقیب (${guess.player_name})`} · تلاش #{guess.player_attempt_number}
@@ -61,21 +61,12 @@ function AttemptCard({
           </Badge>
         </div>
 
-        <div
-          className="muted"
-          style={{
-            fontSize: "0.75rem",
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "0.55rem",
-            alignItems: "center",
-          }}
-        >
+        <div className="muted cb-attempt-stamps">
           <span title="زمان دقیق ثبت در سرور">
-            🕒 ثبت: <strong style={{ color: "#e2e8f0" }}>{formatClockTime(guess.submitted_at)}</strong>
+            🕒 ثبت: <strong>{formatClockTime(guess.submitted_at)}</strong>
           </span>
           <span title="فاصله زمانی از لحظه شروع راند">
-            ⏱ سپری‌شده: <strong style={{ color: "#f3be58" }}>+{formatElapsedMs(guess.elapsed_ms)}</strong>
+            ⏱ سپری‌شده: <strong>+{formatElapsedMs(guess.elapsed_ms)}</strong>
           </span>
           <span title="ترتیب ثبت سراسری بین هر دو بازیکن روی سرور">
             ترتیب سرور: <strong>#{guess.global_attempt_order}</strong>
@@ -298,15 +289,18 @@ export function CodeBreakerArenaView({
   if (state.status === "waiting") {
     const bothJoined = state.players.length === 2;
     return (
-      <div className="stack stack--lg">
-        <Card className="stack stack--md" style={{ borderColor: "rgba(243, 190, 88, 0.45)" }}>
+      <div className="cb-arena stack stack--lg">
+        <Card framed className="stack stack--md" style={{ borderColor: "rgba(243, 190, 88, 0.45)" }}>
           <div className="row row--between row--wrap" style={{ gap: "0.75rem" }}>
             <div className="stack stack--xs">
-              <div className="row row--xs">
+              <div className="row row--xs row--wrap">
+                <span className="g-kicker">VAULT LOBBY</span>
+                <span className="g-led g-led--wait" aria-hidden="true" />
                 <Badge tone="gold">لابی آماده‌سازی · راند {state.current_round}</Badge>
                 <Badge tone="info">کد اتاق: {state.room_code}</Badge>
               </div>
               <h2 style={{ margin: 0 }}>
+                <span className="cb-waiting-pulse" aria-hidden="true" />{" "}
                 {bothJoined
                   ? "هر دو بازیکن حضور دارند — برای تولید کد مخفی ۴ رقمی «آماده‌ام» را بزنید!"
                   : "در انتظار ورود بازیکن دوم به اتاق رمزگشا..."}
@@ -424,9 +418,13 @@ export function CodeBreakerArenaView({
   const didIWin = isFinished && state.winner_seat !== null && state.winner_seat === seat;
 
   return (
-    <div className="stack stack--lg">
+    <div className="cb-arena cb-arena--live stack stack--lg">
       {/* Top Simultaneous Race Scoreboard & Live Server Stopwatch */}
-      <div className="cb-hud">
+      <div className="cb-hud g-frame">
+        <span className="g-frame__c g-frame__c--tl" aria-hidden="true" />
+        <span className="g-frame__c g-frame__c--tr" aria-hidden="true" />
+        <span className="g-frame__c g-frame__c--bl" aria-hidden="true" />
+        <span className="g-frame__c g-frame__c--br" aria-hidden="true" />
         <div
           className={`cb-player-box cb-player-box--me ${state.winner_seat === seat ? "cb-player-box--winner" : ""}`}
         >
@@ -446,14 +444,16 @@ export function CodeBreakerArenaView({
           <Badge tone="success">صندلی {seat ?? 1}</Badge>
         </div>
 
-        <div className="stack stack--xs" style={{ textAlign: "center" }}>
+        <div className="cb-hud-center">
+          <span className="g-vs" aria-hidden="true">VS</span>
           <div className="row row--xs" style={{ justifyContent: "center" }}>
+            <span className={`g-led ${isFinished ? "g-led--off" : "g-led--live"}`} aria-hidden="true" />
             <Badge tone={isFinished ? "gold" : "success"}>
               {isFinished ? `پایان راند ${state.current_round}` : `رقابت هم‌زمان زنده · راند ${state.current_round}`}
             </Badge>
             {!isSolo && <Badge tone="neutral">اتاق {state.room_code}</Badge>}
           </div>
-          <div className="cb-clock" data-testid="round-elapsed-timer">
+          <div className={`cb-clock ${isFinished ? "" : "cb-clock--live"}`} data-testid="round-elapsed-timer">
             {formatElapsedMs(liveElapsedMs)}
           </div>
           <div className="row row--xs" style={{ justifyContent: "center" }}>
@@ -490,13 +490,7 @@ export function CodeBreakerArenaView({
       {isFinished && (
         <Card
           data-testid="round-result-banner"
-          className="stack stack--md"
-          style={{
-            borderColor: didIWin ? "#10b981" : "#f59e0b",
-            background: didIWin
-              ? "radial-gradient(120% 120% at 100% 0%, rgba(16, 185, 129, 0.2), var(--surface-1) 62%)"
-              : "radial-gradient(120% 120% at 100% 0%, rgba(245, 158, 11, 0.16), var(--surface-1) 62%)",
-          }}
+          className={`stack stack--md cb-result-banner ${didIWin ? "cb-result-banner--win" : "cb-result-banner--lose"}`}
         >
           <div className="row row--between row--wrap" style={{ gap: "1rem" }}>
             <div className="stack stack--xs">
@@ -514,15 +508,11 @@ export function CodeBreakerArenaView({
                 کد مخفی ۴ رقمی سرور بازگشایی شد:{" "}
                 <span
                   data-testid="revealed-secret-code"
-                  style={{
-                    fontFamily: "monospace",
-                    letterSpacing: "0.2em",
-                    color: "#f3be58",
-                    direction: "ltr",
-                    display: "inline-block",
-                  }}
+                  className="cb-reveal"
                 >
-                  {state.secret_code ?? "----"}
+                  {(state.secret_code ?? "----").split("").map((d, i) => (
+                    <span key={`${d}-${i}`}>{d}</span>
+                  ))}
                 </span>
               </h2>
               <p className="muted" style={{ margin: 0 }}>
@@ -545,12 +535,18 @@ export function CodeBreakerArenaView({
       {/* Main Tactical Layout: Left Vault Input Keypad + Right Live Dual Player Histories */}
       <div className="cb-console-grid">
         {/* Vault Code Input & Scratchpad Panel */}
-        <Card className="stack stack--md">
-          <div className="row row--between">
-            <h3 style={{ margin: 0 }}>🔐 پنل ارسال کد ۴ رقمی</h3>
-            <Badge tone={isFinished ? "neutral" : "success"}>
-              {isFinished ? "قفل پایان راند" : "ارسال آزاد و هم‌زمان"}
-            </Badge>
+        <Card framed className="stack stack--md cb-vault-panel">
+          <div className="cb-vault-head">
+            <div className="stack stack--xs">
+              <span className="g-kicker">COMBINATION LOCK</span>
+              <h3 style={{ margin: 0 }}>🔐 پنل ارسال کد ۴ رقمی</h3>
+            </div>
+            <div className="row row--xs">
+              <span className="g-serial">P1–P4 · LTR</span>
+              <Badge tone={isFinished ? "neutral" : "success"}>
+                {isFinished ? "قفل پایان راند" : "ارسال آزاد و هم‌زمان"}
+              </Badge>
+            </div>
           </div>
 
           <p className="muted" style={{ margin: 0, fontSize: "0.82rem", lineHeight: 1.65 }}>
@@ -568,7 +564,7 @@ export function CodeBreakerArenaView({
                 disabled={isFinished}
                 data-testid={`code-slot-${idx}`}
                 onClick={() => setActiveSlot(idx)}
-                className={`cb-slot ${!isFinished && activeSlot === idx ? "cb-slot--active" : ""}`}
+                className={`cb-slot ${!isFinished && activeSlot === idx ? "cb-slot--active" : ""} ${val !== "" ? "cb-slot--filled" : ""}`}
               >
                 {val !== "" ? val : "·"}
               </button>
@@ -576,14 +572,14 @@ export function CodeBreakerArenaView({
           </div>
 
           {localError && (
-            <div style={{ color: "#fca5a5", fontSize: "0.84rem", fontWeight: 600 }}>
+            <div className="cb-error" role="alert">
               ⚠ {localError}
             </div>
           )}
 
-          {/* Tactile 0-9 Numeric Keypad */}
-          <div className="cb-keypad">
-            {["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"].map((digit) => (
+          {/* Tactile phone-style 0-9 Numeric Keypad */}
+          <div className="cb-keypad" dir="ltr">
+            {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((digit) => (
               <button
                 key={digit}
                 type="button"
@@ -595,9 +591,36 @@ export function CodeBreakerArenaView({
                 {digit}
               </button>
             ))}
+            <button
+              type="button"
+              disabled={isFinished || busy}
+              onClick={handleBackspace}
+              className="cb-key"
+              aria-label="حذف رقم"
+            >
+              ⌫
+            </button>
+            <button
+              type="button"
+              data-testid="keypad-0"
+              disabled={isFinished || busy}
+              onClick={() => pushDigit("0")}
+              className="cb-key"
+            >
+              0
+            </button>
+            <button
+              type="button"
+              disabled={isFinished || busy}
+              onClick={handleClearSlots}
+              className="cb-key"
+              aria-label="پاک کردن"
+            >
+              C
+            </button>
           </div>
 
-          <div className="row row--sm">
+          <div className="cb-actions">
             <Button
               type="button"
               data-testid="submit-guess-btn"
@@ -667,29 +690,24 @@ export function CodeBreakerArenaView({
           </div>
 
           {/* Compact Color Legend */}
-          <div
-            className="stack stack--xs"
-            style={{
-              fontSize: "0.78rem",
-              padding: "0.65rem 0.75rem",
-              borderRadius: 10,
-              background: "rgba(255,255,255,0.03)",
-            }}
-          >
-            <div>
-              <strong style={{ color: "#6ee7b7" }}>🟢 سبز (P1..P4):</strong> رقم درست در جایگاه کاملاً درست.
+          <div className="cb-legend">
+            <div className="cb-rule-swatch">
+              <i className="g">G</i>
+              <div><strong style={{ color: "#6ee7b7" }}>سبز</strong> — رقم درست در جایگاه کاملاً درست.</div>
             </div>
-            <div>
-              <strong style={{ color: "#fcd34d" }}>🟡 زرد (بدون شمارش مضاعف):</strong> رقم در کد مخفی هست ولی در جایگاه دیگری است.
+            <div className="cb-rule-swatch">
+              <i className="y">Y</i>
+              <div><strong style={{ color: "#fcd34d" }}>زرد</strong> — رقم در کد هست ولی جایگاهش فرق دارد.</div>
             </div>
-            <div>
-              <strong style={{ color: "#fca5a5" }}>🔴 قرمز:</strong> این رقم (یا تکرار اضافی آن) در کد مخفی وجود ندارد.
+            <div className="cb-rule-swatch">
+              <i className="r">R</i>
+              <div><strong style={{ color: "#cbd5e1" }}>خاکستری</strong> — این رقم در کد مخفی نیست.</div>
             </div>
           </div>
         </Card>
 
         {/* Detailed Persistent Dual History Board */}
-        <div className="stack stack--md">
+        <div className="stack stack--md cb-history-board">
           <div className="row row--between row--wrap" style={{ gap: "0.5rem" }}>
             <div className="stack stack--xs">
               <h3 style={{ margin: 0 }}>📊 تابلوی کامل تاریخچه تلاش‌های هر دو بازیکن</h3>
@@ -698,7 +716,7 @@ export function CodeBreakerArenaView({
               </span>
             </div>
 
-            <div className="row row--xs">
+            <div className="cb-tab-row">
               <Button
                 size="sm"
                 variant={historyTab === "split" ? "primary" : "secondary"}

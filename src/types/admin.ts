@@ -227,6 +227,21 @@ export interface AuditRow {
   created_at: string;
 }
 
+export interface AdminCrashOps {
+  ok: boolean;
+  source: string;
+  round: Record<string, unknown> | null;
+  kpis: {
+    rounds_total: number;
+    rounds_24h: number;
+    wagered: number;
+    paid: number;
+    bets: number;
+    cashed: number;
+  };
+  recent: Record<string, unknown>[];
+}
+
 export interface Paged<T> {
   items: T[];
   total: number;

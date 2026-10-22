@@ -54,20 +54,24 @@ export function WordCipherRoomPage() {
 
   const inFlightActionRef = useRef(false);
   const latestVersionRef = useRef(0);
+  const fetchGenRef = useRef(0);
   const playerToken = session?.playerToken ?? null;
 
   const fetchAuthenticatedState = useCallback(
     async (notify = false) => {
       if (!roomCode) return;
+      const gen = ++fetchGenRef.current;
       try {
         const res = await wordGameApi.getRoomState(roomCode, playerToken, notify);
+        if (gen !== fetchGenRef.current) return;
         latestVersionRef.current = res.state.version;
         setSnapshot(res);
         setErrorCode(null);
       } catch (err) {
+        if (gen !== fetchGenRef.current) return;
         setErrorCode(getErrorMessage(err));
       } finally {
-        setLoading(false);
+        if (gen === fetchGenRef.current) setLoading(false);
       }
     },
     [roomCode, playerToken],
@@ -109,7 +113,9 @@ export function WordCipherRoomPage() {
     window.addEventListener("online", onOnline);
 
     const pollId = window.setInterval(() => {
-      void fetchAuthenticatedState(false);
+      if (!inFlightActionRef.current) {
+        void fetchAuthenticatedState(false);
+      }
     }, 4500);
 
     return () => {
@@ -126,6 +132,7 @@ export function WordCipherRoomPage() {
     setBusy(true);
     try {
       const res = await fn();
+      fetchGenRef.current += 1;
       latestVersionRef.current = res.state.version;
       if (res.evaluation?.outcome === "correct") {
         wordCipherAudio.play("guess_correct");
@@ -387,7 +394,7 @@ export function WordCipherRoomPage() {
   }
 
   return (
-          <div className="container" style={{ paddingBlock: "1.5rem" }}>
+          <div className="container wg-arena" style={{ paddingBlock: "1.5rem" }}>
         <WordCipherArenaView
           snapshot={snapshot}
           busy={busy}

@@ -10,9 +10,10 @@ export interface ModalProps {
   footer?: ReactNode;
   /** hidden from screen readers' dialog role naming when false */
   labelledBy?: boolean;
+  wide?: boolean;
 }
 
-export function Modal({ open, title, onClose, children, footer }: ModalProps) {
+export function Modal({ open, title, onClose, children, footer, wide }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -38,7 +39,7 @@ export function Modal({ open, title, onClose, children, footer }: ModalProps) {
     <div className="modal-backdrop" onClick={onClose} role="presentation">
       <div
         ref={dialogRef}
-        className="modal"
+        className={wide ? "modal modal--wide" : "modal"}
         role="dialog"
         aria-modal="true"
         aria-label={title}

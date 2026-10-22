@@ -2,20 +2,12 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
-  Compass,
-  Crown,
-  Flame,
   Gamepad2,
   Grid3X3,
   LogIn,
   Plus,
-  Rocket,
-  Shield,
   ShieldCheck,
-  Sparkles,
   Swords,
-  Target,
-  Trophy,
   Users,
   Zap,
 } from "lucide-react";
@@ -26,39 +18,13 @@ import { useToast } from "@/components/ui/Toast";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { api } from "@/lib/api";
 import { toFaDigits } from "@/lib/format";
+import { GameIcon } from "@/games/GameIcon";
 import {
   DESIGNER_CREDIT,
   PLATFORM_GAMES,
-  type PlatformGameIcon,
   getActiveGames,
-  getStandaloneGames,
 } from "@/games/registry";
 import type { PublicStatus } from "@/types/room";
-
-function renderGameIcon(icon: PlatformGameIcon, size = 22) {
-  switch (icon) {
-    case "grid":
-      return <Gamepad2 size={size} aria-hidden="true" />;
-    case "rocket":
-      return <Rocket size={size} aria-hidden="true" />;
-    case "swords":
-      return <Swords size={size} aria-hidden="true" />;
-    case "crown":
-      return <Crown size={size} aria-hidden="true" />;
-    case "flame":
-      return <Flame size={size} aria-hidden="true" />;
-    case "shield":
-      return <Shield size={size} aria-hidden="true" />;
-    case "target":
-      return <Target size={size} aria-hidden="true" />;
-    case "trophy":
-      return <Trophy size={size} aria-hidden="true" />;
-    case "sparkles":
-      return <Sparkles size={size} aria-hidden="true" />;
-    case "compass":
-      return <Compass size={size} aria-hidden="true" />;
-  }
-}
 
 /* ------------------------------------------------------------------ */
 /* Static content                                                      */
@@ -206,19 +172,17 @@ export function HomePage() {
         <div>
           <span className="hero__badge">
             <Zap size={14} aria-hidden="true" />
-            بدون ثبت‌نام — فقط با کد اتاق
+            بدون ثبت‌نام — همین حالا بازی کن
           </span>
-          <h1 className="hero__title" style={{ textAlign: "right" }}>
-            دوز بازی کن، <span className="hero__accent">زنده</span> با دوستانت
+          <h1 className="hero__title">
+            میز زنده دوز، <span className="hero__accent">با دوستت</span>
           </h1>
           <p className="hero__sub">
-            دوز آنلاین یک میز بازی سریع و امن برای دو نفر است. اتاق بساز، کد را برای
-            دوستت بفرست و همان لحظه شروع کنید — حرکت‌ها روی سرور اعتبارسنجی می‌شوند
-            و تقلب ممکن نیست.
+            اتاق بساز، کد را بفرست، شروع کنید. حرکت‌ها روی سرور چک می‌شوند — تقلب راه ندارد.
           </p>
           <div className="hero__actions">
-            <Button size="lg" icon={<Plus size={18} aria-hidden="true" />} onClick={goCreate}>
-              ساخت اتاق
+            <Button size="lg" icon={<Swords size={18} aria-hidden="true" />} onClick={() => navigate("/play")}>
+              شروع بازی
             </Button>
             <Button
               size="lg"
@@ -226,68 +190,37 @@ export function HomePage() {
               icon={<LogIn size={18} aria-hidden="true" />}
               onClick={() => navigate("/join")}
             >
-              ورود به اتاق
+              ورود با کد
             </Button>
-            <Button
-              size="lg"
-              variant="secondary"
-              icon={<Swords size={18} aria-hidden="true" />}
-              onClick={() => navigate("/play")}
-            >
-              بازی رقابتی و شرط
+            <Button size="lg" variant="ghost" icon={<Plus size={18} aria-hidden="true" />} onClick={goCreate}>
+              ساخت اتاق دوستانه
             </Button>
-            {getStandaloneGames().map((game) => (
-              <Button
-                key={game.id}
-                size="lg"
-                variant="secondary"
-                icon={renderGameIcon(game.icon, 18)}
-                onClick={() => navigate(game.route)}
-              >
-                {game.ctaLabel ?? game.title}
-              </Button>
-            ))}
+          </div>
+
+          <div className="hero__proof" aria-label="چرا دوز آنلاین">
+            <span className="proof-chip">بدون حساب کاربری</span>
+            <span className="proof-chip">
+              <strong>{status ? toFaDigits(status.active_rooms) : "—"}</strong> اتاق زنده
+            </span>
+            <span className="proof-chip">
+              <ShCoin size={14} /> شریف‌کوین
+            </span>
+            <span className="proof-chip">
+              {toFaDigits(getActiveGames().length)} بازی فعال
+            </span>
           </div>
 
           <div className="hero__status" aria-live="polite">
             {status ? (
               <span className="service-pill service-pill--ok">
                 <span className="service-pill__dot" aria-hidden="true" />
-                سرویس فعال — {toFaDigits(status.active_rooms)} اتاق بازی زنده
+                سرور آنلاین
               </span>
             ) : statusFailed ? (
               <span className="service-pill service-pill--unknown">وضعیت سرویس در دسترس نیست</span>
             ) : (
               <span className="service-pill service-pill--loading">در حال بررسی وضعیت…</span>
             )}
-          </div>
-
-          <div className="home-notes" style={{ marginTop: 26 }}>
-            <div className="note-card">
-              <ShCoin size={22} />
-              <div>
-                <h2 className="note-card__title">شریف‌کوین (Sheriff Coin) و اقتصاد یکپارچه</h2>
-                <p className="note-card__text">
-                  در بخش <Link className="link" to="/play">دوز رقابتی</Link>،{" "}
-                  <Link className="link" to="/games/code-breaker">رمزگشا (کد ۴ رقمی)</Link>،{" "}
-                  <Link className="link" to="/games/word-cipher">رازواژه</Link> و کمپین{" "}
-                  <Link className="link" to="/games/last-night">Last Night — Medieval Survival</Link>{" "}
-                  بازی کن و <strong>Sheriff Coin</strong> جمع کن.{" "}
-                  <Link className="link" to="/leaderboard">جدول رده‌بندی</Link> و{" "}
-                  <Link className="link" to="/shop">فروشگاه</Link> را هم ببین.
-                </p>
-              </div>
-            </div>
-            <div className="note-card">
-              <ShieldCheck size={20} aria-hidden="true" />
-              <div>
-                <h2 className="note-card__title">هویت تو فقط یک توکن خصوصی است</h2>
-                <p className="note-card__text">
-                  بعد از ورود به اتاق، یک توکن تصادفی فقط در مرورگر خودت ذخیره می‌شود و هر
-                  حرکت با آن روی سرور تأیید می‌گردد. هیچ رمزی جایی ثبت نمی‌شود.
-                </p>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -346,39 +279,25 @@ export function HomePage() {
 
       {/* --------------------- Multi-Game Hub --------------------- */}
       <div className="section-head">
-        <h2 className="section-head__title">کاتالوگ بازی‌های پلتفرم</h2>
+        <h2 className="section-head__title">انتخاب بازی</h2>
         <span className="section-head__sub">
-          Multi-Game Hub — {toFaDigits(PLATFORM_GAMES.length)} عنوان، {toFaDigits(getActiveGames().length)} عنوان فعال
+          {toFaDigits(getActiveGames().length)} عنوان آماده بازی
         </span>
       </div>
       <section className="game-hub" aria-label="کاتالوگ بازی‌ها">
         {PLATFORM_GAMES.map((game) => (
           <article className="game-card" key={game.id} style={{ "--game-accent": game.accent } as React.CSSProperties}>
             {game.bannerUrl ? (
-              <div
-                style={{
-                  borderRadius: 10,
-                  overflow: "hidden",
-                  border: `1px solid ${game.accent}40`,
-                  aspectRatio: "16 / 9",
-                  marginBottom: 8,
-                  background: "var(--bg-0)",
-                }}
-              >
-                <img
-                  src={game.bannerUrl}
-                  alt={game.title}
-                  loading="lazy"
-                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                />
+              <div className="game-card__banner">
+                <img src={game.bannerUrl} alt="" loading="lazy" />
               </div>
             ) : null}
             <div className="game-card__top">
               <span className="game-card__icon" style={{ color: game.accent, borderColor: `${game.accent}66`, background: `${game.accent}14` }}>
-                {renderGameIcon(game.icon, 22)}
+                <GameIcon icon={game.icon} size={22} />
               </span>
               <span className={`game-card__tag ${game.status === "live" ? "game-card__tag--live" : "game-card__tag--soon"}`}>
-                {game.status === "live" ? "فعال" : game.status === "beta" ? "بتا" : "به‌زودی"}
+                {game.status === "live" ? "آماده بازی" : game.status === "beta" ? "بتا" : "به‌زودی"}
               </span>
             </div>
             <h3 className="game-card__title">
@@ -386,27 +305,20 @@ export function HomePage() {
               <small>{game.titleEn}</small>
             </h3>
             <p className="game-card__text">{game.tagline}</p>
-            <p className="game-card__text" style={{ color: "var(--text-3)", fontSize: 12.5 }}>
-              {game.description}
-            </p>
             <div className="game-card__specs">
               <span className="game-card__spec">{game.players}</span>
               <span className="game-card__spec">{game.genre}</span>
-              {game.frameRate ? <span className="game-card__spec">{toFaDigits(game.frameRate)} FPS</span> : null}
-              {game.engine ? <span className="game-card__spec">{game.engine}</span> : null}
-              {game.features.map((feat) => (
+              {game.features.slice(0, 2).map((feat) => (
                 <span className="game-card__spec" key={feat}>{feat}</span>
               ))}
             </div>
             {game.status === "live" || game.status === "beta" ? (
-              <Link className="btn btn--secondary btn--sm" to={game.route} style={{ alignSelf: "flex-start" }}>
-                {game.ctaLabel ?? "بازی کن"}
-                <ArrowLeft size={14} aria-hidden="true" />
+              <Link className="btn btn--primary btn--md game-card__cta" to={game.route === "/" ? "/play" : game.route}>
+                بازی کن
+                <ArrowLeft size={16} aria-hidden="true" />
               </Link>
             ) : (
-              <span className="game-card__spec" style={{ alignSelf: "flex-start", color: "var(--gold)" }}>
-                موتور Canvas 2D · حلقهٔ قطعی ۶۰ هرتز
-              </span>
+              <span className="game-card__spec">به‌زودی</span>
             )}
           </article>
         ))}
@@ -466,19 +378,26 @@ export function HomePage() {
         <div className="note-card">
           <Gamepad2 size={20} aria-hidden="true" />
           <div>
-            <h2 className="note-card__title">قانون بازی ساده است</h2>
+            <h2 className="note-card__title">سه تا در یک خط، بردی</h2>
             <p className="note-card__text">
-              سه علامت یکسان در یک ردیف، ستون یا قطر یعنی برد. اگر صفحه پر شود و برنده‌ای
-              نباشد، بازی مساوی است. <Link className="link" to="/rules">قوانین کامل</Link>
+              ردیف، ستون یا قطر. صفحه پر شد و برنده‌ای نبود؟ مساوی.{" "}
+              <Link className="link" to="/rules">قوانین کامل</Link>
+            </p>
+          </div>
+        </div>
+        <div className="note-card">
+          <ShieldCheck size={20} aria-hidden="true" />
+          <div>
+            <h2 className="note-card__title">بدون رمز، فقط توکن مرورگر</h2>
+            <p className="note-card__text">
+              هویتت روی دستگاه خودت می‌ماند. هر حرکت روی سرور امضا می‌شود.
             </p>
           </div>
         </div>
         <div className="note-card" style={{ alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h2 className="note-card__title">هویت بصری تاکتیکال</h2>
-            <p className="note-card__text">
-              کربن عمیق و طلای مسدود — تم رابط توسط {DESIGNER_CREDIT}.
-            </p>
+            <h2 className="note-card__title">تم کربن و طلا</h2>
+            <p className="note-card__text">{DESIGNER_CREDIT}</p>
           </div>
           <DesignerBadge size="lg" />
         </div>

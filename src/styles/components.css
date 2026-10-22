@@ -28,13 +28,14 @@
 }
 
 .btn--primary {
-  background: linear-gradient(180deg, var(--accent-strong), var(--accent));
-  color: #fff;
-  box-shadow: 0 4px 18px -6px rgba(124, 108, 255, 0.55);
+  background: linear-gradient(180deg, var(--gold-strong), var(--gold));
+  color: #1a1408;
+  font-weight: 800;
+  box-shadow: var(--shadow-gold);
 }
 
 .btn--primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, #a99dff, var(--accent-strong));
+  background: linear-gradient(180deg, #ffe08a, var(--gold-strong));
 }
 
 .btn--secondary {
@@ -70,7 +71,8 @@
 
 .btn--sm {
   font-size: 13px;
-  padding: 6px 12px;
+  padding: 8px 14px;
+  min-height: 40px;
   border-radius: 8px;
 }
 
@@ -82,6 +84,7 @@
 .btn--lg {
   font-size: 16px;
   padding: 13px 24px;
+  min-height: 48px;
   border-radius: var(--radius-m);
 }
 
