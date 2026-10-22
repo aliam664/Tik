@@ -36,6 +36,7 @@ export function CodeBreakerRoomPage() {
   const [joiningDirect, setJoiningDirect] = useState(false);
 
   const inFlightRef = useRef(false);
+  const fetchGenRef = useRef(0);
   const playerToken = session?.playerToken ?? null;
 
   useEffect(() => {
@@ -47,14 +48,17 @@ export function CodeBreakerRoomPage() {
   const syncState = useCallback(
     async (notify = false) => {
       if (!roomCode) return;
+      const gen = ++fetchGenRef.current;
       try {
         const res = await codeBreakerApi.getRoomState(roomCode, playerToken, notify);
+        if (gen !== fetchGenRef.current) return;
         setSnapshot(res);
         setErrorMsg(null);
       } catch (err) {
+        if (gen !== fetchGenRef.current) return;
         setErrorMsg(getErrorMessage(err));
       } finally {
-        setLoading(false);
+        if (gen === fetchGenRef.current) setLoading(false);
       }
     },
     [roomCode, playerToken],
@@ -111,6 +115,7 @@ export function CodeBreakerRoomPage() {
     setBusy(true);
     try {
       const next = await fn();
+      fetchGenRef.current += 1;
       setSnapshot(next);
       return true;
     } catch (err) {
@@ -280,7 +285,7 @@ export function CodeBreakerRoomPage() {
   }
 
   return (
-    <div className="container" style={{ paddingBlock: "1.5rem" }}>
+    <div className="container cb-arena" style={{ paddingBlock: "1.5rem" }}>
       <CodeBreakerArenaView
         snapshot={snapshot}
         busy={busy}

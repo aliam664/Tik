@@ -53,11 +53,20 @@ export interface PlatformGame {
   readonly icon: PlatformGameIcon;
   /** Ranked/stakes support flags. */
   readonly features: readonly string[];
+  /** Short header/drawer label. Omit to keep the title hub-only. */
+  readonly navLabel?: string;
+  /** When true, `navLabel` is injected into MAIN_NAV_ITEMS. */
+  readonly showInNav?: boolean;
+  /** Lower numbers appear earlier in the header. */
+  readonly navOrder?: number;
+  /** Extra lobby paths (legacy aliases). */
+  readonly routeAliases?: readonly string[];
 }
 
 /**
  * Platform catalog. Adding a new game here automatically surfaces it across
- * the Home Multi-Game Hub, hero quick-launch actions, and unified Sheriff Coin shop.
+ * the Home Multi-Game Hub, header nav, generated routes, and unified Sheriff Coin shop.
+ * Agent playbook: HOW_TO_ADD_A_NEW_GAME.md
  */
 export const PLATFORM_GAMES: readonly PlatformGame[] = [
   {
@@ -76,6 +85,7 @@ export const PLATFORM_GAMES: readonly PlatformGame[] = [
     accent: "#e5a93c",
     icon: "grid",
     features: ["اتاق خصوصی", "رنکینگ Elo", "Sheriff Coin"],
+    showInNav: false,
   },
   {
     id: "last_night",
@@ -100,6 +110,10 @@ export const PLATFORM_GAMES: readonly PlatformGame[] = [
       "خزانه مشترک Sheriff Coin",
       "۳ غول بزرگ چندفازی",
     ],
+    navLabel: "Last Night",
+    showInNav: true,
+    navOrder: 3,
+    routeAliases: ["/games/arena2d"],
   },
   {
     id: "word_cipher",
@@ -124,6 +138,9 @@ export const PLATFORM_GAMES: readonly PlatformGame[] = [
       "تشخیص پاسخ مرتبط و مترادف فارسی",
       "پاداش Sheriff Coin + تمرین با AI",
     ],
+    navLabel: "رازواژه",
+    showInNav: true,
+    navOrder: 2,
   },
   {
     id: "code_breaker",
@@ -148,6 +165,34 @@ export const PLATFORM_GAMES: readonly PlatformGame[] = [
       "تاریخچه کامل هر دو بازیکن با تایمر سرور",
       "پشتیبانی کامل از صفر ابتدایی و ارقام تکراری",
     ],
+    navLabel: "رمزگشا",
+    showInNav: true,
+    navOrder: 1,
+  },
+  {
+    id: "sheriff_blast",
+    title: "انفجار شریف",
+    titleEn: "SHERIFF BLAST",
+    tagline: "سالن زنده ضریب طلایی — برداشت کن قبل از انفجار",
+    description:
+      "همه با هم یک راند را می‌بینند. ضریب از ۱.۰۰× بالا می‌رود؛ قبل از انفجار برداشت کن تا شرط Sheriff Coin در همان ضریب ضرب شود. نقطهٔ انفجار با HMAC-SHA256 از قبل قفل است (لبهٔ خانه ۱٪).",
+    status: "live",
+    route: "/games/blast",
+    players: "سالن زنده · همه با هم",
+    genre: "ضریب / انفجار",
+    frameRate: 60,
+    engine: "Canvas 2D · Provably Fair HMAC-SHA256",
+    accent: "#e85d4c",
+    icon: "flame",
+    features: [
+      "دو شرط هم‌زمان + خروج خودکار",
+      "RTP حدود ۹۹٪ — لبهٔ خانه شفاف ۱٪",
+      "تأیید منصفانه بعد از هر راند",
+      "فقط Sheriff Coin مجازی — نقد نمی‌شود",
+    ],
+    navLabel: "انفجار",
+    showInNav: true,
+    navOrder: 0,
   },
 ] as const;
 
@@ -169,6 +214,17 @@ export function getActiveGames(): readonly PlatformGame[] {
 /** Secondary/standalone games with dedicated lobby routes (excluding root "/"). */
 export function getStandaloneGames(): readonly PlatformGame[] {
   return PLATFORM_GAMES.filter((g) => g.status === "live" && g.route !== "/");
+}
+
+/** Games that appear in the site header / mobile drawer. */
+export function getHeaderNavGames(): readonly { path: string; label: string }[] {
+  return PLATFORM_GAMES.filter((g) => g.showInNav && g.navLabel && g.route !== "/")
+    .slice()
+    .sort((a, b) => (a.navOrder ?? 50) - (b.navOrder ?? 50))
+    .map((g) => ({
+      path: g.route,
+      label: g.navLabel as string,
+    }));
 }
 
 /** Signature of the site's visual designer & engineer. */

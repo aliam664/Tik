@@ -115,3 +115,50 @@
     opacity: 1;
   }
 }
+
+@keyframes vaultScan {
+  0% { transform: translateY(-120%); opacity: 0; }
+  18% { opacity: 0.55; }
+  100% { transform: translateY(220%); opacity: 0; }
+}
+
+@keyframes tileFlipIn {
+  0% { transform: rotateX(-88deg) scale(0.86); opacity: 0; }
+  100% { transform: rotateX(0) scale(1); opacity: 1; }
+}
+
+@keyframes slotPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(243, 190, 88, 0.0), inset 0 2px 8px rgba(0, 0, 0, 0.6); }
+  50% { box-shadow: 0 0 22px rgba(243, 190, 88, 0.38), inset 0 2px 8px rgba(0, 0, 0, 0.6); }
+}
+
+@keyframes winnerSheen {
+  0% { background-position: 120% 0; }
+  100% { background-position: -20% 0; }
+}
+
+@keyframes floatIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes ringPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(229, 169, 60, 0.0); }
+  50% { box-shadow: 0 0 0 6px rgba(229, 169, 60, 0.12); }
+}
+
+@keyframes urgentTick {
+  0%, 100% { transform: scale(1); color: #f87171; }
+  50% { transform: scale(1.06); color: #fecaca; }
+}
+
+@keyframes cardSelectPop {
+  0% { transform: scale(0.96); }
+  55% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+@keyframes shimmerSweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

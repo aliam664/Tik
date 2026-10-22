@@ -105,8 +105,12 @@ export function AdminIntegrityPanel({
     }
   };
 
-  if (loading) return <LoadingSpinner size={24} label="در حال بارگذاری پرچم‌ها" />;
-  if (error) return <ErrorState title="مرکز یکپارچگی" description={error} onRetry={() => void load()} />;
+  if (loading && flags.length === 0 && !queue) {
+    return <LoadingSpinner size={24} label="در حال بارگذاری پرچم‌ها" />;
+  }
+  if (error && flags.length === 0) {
+    return <ErrorState title="مرکز یکپارچگی" description={error} onRetry={() => void load()} />;
+  }
 
   return (
     <section className="card">
@@ -119,6 +123,11 @@ export function AdminIntegrityPanel({
         </Button>
       </div>
 
+      {error ? (
+        <p className="inline-warning" role="status">
+          به‌روزرسانی پرچم‌ها ناموفق بود؛ داده قبلی نمایش داده می‌شود. {error}
+        </p>
+      ) : null}
       {queueError ? <p className="inline-warning" role="status">وضعیت صف دریافت نشد: {queueError}</p> : null}
       {queue ? (
         <div className="econ-metrics">

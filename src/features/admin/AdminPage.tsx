@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
   Activity,
   Bot,
@@ -6,6 +6,7 @@ import {
   Coins,
   Cpu,
   DoorOpen,
+  Flame,
   History,
   KeyRound,
   LogOut,
@@ -35,13 +36,15 @@ import { AdminIntegrityPanel } from "./AdminIntegrityPanel";
 import { AdminSeasonsPanel } from "./AdminSeasonsPanel";
 import { AdminRoomsPanel } from "./AdminRoomsPanel";
 import { AdminGamesPanel } from "./AdminGamesPanel";
+import { AdminBlastPanel } from "./AdminBlastPanel";
 import { AdminSettingsPanel } from "./AdminSettingsPanel";
 import { AdminAuditPanel } from "./AdminAuditPanel";
 
-const TAB_ICONS: Record<AdminTabId, React.ReactNode> = {
+const TAB_ICONS: Record<AdminTabId, ReactNode> = {
   overview: <Activity size={16} aria-hidden="true" />,
   system: <Cpu size={16} aria-hidden="true" />,
   arena: <Bot size={16} aria-hidden="true" />,
+  blast: <Flame size={16} aria-hidden="true" />,
   players: <Users size={16} aria-hidden="true" />,
   rooms: <DoorOpen size={16} aria-hidden="true" />,
   games: <Trophy size={16} aria-hidden="true" />,
@@ -52,8 +55,22 @@ const TAB_ICONS: Record<AdminTabId, React.ReactNode> = {
   audit: <History size={16} aria-hidden="true" />,
 };
 
+function OpsClock({ className }: { className?: string }) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  const label = now.toISOString().replace("T", " ").slice(0, 19) + " UTC";
+  return (
+    <time className={className} dateTime={now.toISOString()}>
+      {label}
+    </time>
+  );
+}
+
 export function AdminPage() {
-  useDocumentTitle("پنل مدیریت حرفه‌ای");
+  useDocumentTitle("مرکز عملیات دوز");
   const { showToast } = useToast();
 
   const [session, setSession] = useState(() => adminSession.load());
@@ -62,13 +79,11 @@ export function AdminPage() {
   const [adminUsername, setAdminUsername] = useState("admin");
   const [tab, setTab] = useState<AdminTabId>("overview");
 
-  /* Login form */
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  /* Change password modal */
   const [pwModal, setPwModal] = useState(false);
   const [curPw, setCurPw] = useState("");
   const [newPw, setNewPw] = useState("");
@@ -107,8 +122,6 @@ export function AdminPage() {
             adminSession.clear();
             setSession(null);
           } else {
-            // A transient network/configuration failure does not invalidate the
-            // locally stored credential. Let the signed RPCs decide access.
             setVerificationError(user.message);
           }
         }
@@ -146,7 +159,7 @@ export function AdminPage() {
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     setLoginError(null);
     if (!username.trim() || !password) {
@@ -161,7 +174,7 @@ export function AdminPage() {
       setVerificationError(null);
       setAdminUsername(username.trim());
       setPassword("");
-      showToast("خوش آمدید", "success");
+      showToast("دسترسی تأیید شد — مرکز عملیات فعال است", "success");
     } catch (err) {
       const user = toUserError(err);
       setLoginError(user.message);
@@ -180,10 +193,10 @@ export function AdminPage() {
     }
     adminSession.clear();
     setSession(null);
-    showToast("از پنل مدیریت خارج شدید", "info");
+    showToast("نشست عملیات بسته شد", "info");
   };
 
-  const changePassword = async (e: React.FormEvent) => {
+  const changePassword = async (e: FormEvent) => {
     e.preventDefault();
     if (!session) return;
     setPwError(null);
@@ -210,26 +223,27 @@ export function AdminPage() {
   if (verifying) {
     return (
       <div className="room-loading">
-        <LoadingSpinner size={28} label="بررسی نشست مدیریت…" />
+        <LoadingSpinner size={28} label="در حال احراز نشست عملیات…" />
       </div>
     );
   }
 
   if (!session) {
     return (
-      <div className="page page--narrow admin-login-wrap">
-        <form className="card admin-login" onSubmit={(e) => void handleLogin(e)} noValidate>
-          <div className="admin-login__head">
-            <span className="admin-login__icon" aria-hidden="true">
+      <div className="ops-login-wrap">
+        <form className="ops-login" onSubmit={(e) => void handleLogin(e)} noValidate>
+          <p className="ops-login__prompt">ACCESS GATE · CLEARANCE REQUIRED</p>
+          <div className="ops-login__head">
+            <span className="ops-login__icon" aria-hidden="true">
               <Shield size={22} />
             </span>
             <div>
-              <h1 className="card__title">ورود مدیر سامانه</h1>
-              <p className="card__sub">دسترسی محدود به مدیران مجاز دوز</p>
+              <h1>ورود به مرکز عملیات دوز</h1>
+              <p className="card__sub">احراز هویت اپراتور — نشست محدود، تمام اقدامات ثبت می‌شود</p>
             </div>
           </div>
 
-          <FormField label="نام کاربری" htmlFor="admin-username">
+          <FormField label="شناسه اپراتور" htmlFor="admin-username">
             <Input
               id="admin-username"
               dir="ltr"
@@ -240,7 +254,7 @@ export function AdminPage() {
             />
           </FormField>
 
-          <FormField label="رمز عبور" htmlFor="admin-password" error={loginError}>
+          <FormField label="عبارت عبور" htmlFor="admin-password" error={loginError}>
             <Input
               id="admin-password"
               type="password"
@@ -254,34 +268,43 @@ export function AdminPage() {
           </FormField>
 
           <Button type="submit" size="lg" fullWidth loading={loginLoading}>
-            ورود به پنل مدیریت
+            تأیید دسترسی و ورود
           </Button>
+          <div className="ops-login__meta">
+            <span>CHANNEL SECURE</span>
+            <OpsClock />
+          </div>
         </form>
       </div>
     );
   }
 
   return (
-    <div className="page admin-page admin-layout">
-      <header className="admin-bar">
-        <div className="admin-bar__title">
-          <Shield size={20} aria-hidden="true" />
+    <div className="page admin-page admin-layout ops-console">
+      <header className="ops-topbar">
+        <div className="ops-topbar__brand">
+          <span className="ops-mark" aria-hidden="true">
+            <Shield size={20} />
+          </span>
           <div>
-            <h1>پنل مدیریت حرفه‌ای دوز</h1>
+            <h1>مرکز عملیات دوز</h1>
             <p>
-              کاربر فعال: <span className="ltr num">{adminUsername}</span> — کنترل کامل منابع، اقتصاد، بازیکنان و هوش مصنوعی
+              اپراتور <span className="ltr num">{adminUsername}</span>
+              {" · "}
+              <span className="ops-clearance">CLEARANCE LVL-A</span>
             </p>
           </div>
         </div>
+        <OpsClock className="ops-clock" />
         <DesignerBadge />
-        <div className="admin-bar__actions">
+        <div className="ops-topbar__actions">
           <Button
             variant={tab === "arena" ? "primary" : "secondary"}
             size="sm"
             icon={<Bot size={15} aria-hidden="true" />}
             onClick={() => setTab("arena")}
           >
-            مسابقه با AI شکست‌ناپذیر
+            عرصه AI
           </Button>
           <Button
             variant="ghost"
@@ -297,7 +320,7 @@ export function AdminPage() {
             icon={<LogOut size={15} aria-hidden="true" />}
             onClick={() => void handleLogout()}
           >
-            خروج
+            قطع نشست
           </Button>
         </div>
       </header>
@@ -312,58 +335,63 @@ export function AdminPage() {
         </div>
       ) : null}
 
-      <nav className="admin-tabs" aria-label="بخش‌های پنل مدیریت">
-        {ADMIN_TABS_META.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            className={`admin-tab ${tab === t.id ? "admin-tab--active" : ""} ${
-              t.badge ? "admin-tab--featured" : ""
-            }`}
-            aria-current={tab === t.id ? "page" : undefined}
-            onClick={() => setTab(t.id)}
-          >
-            {TAB_ICONS[t.id]}
-            <span>{t.label}</span>
-            {t.badge ? <em className="admin-tab__badge">{t.badge}</em> : null}
-          </button>
-        ))}
-      </nav>
+      <div className="ops-body">
+        <nav className="ops-rail" aria-label="بخش‌های مرکز عملیات">
+          {ADMIN_TABS_META.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={`admin-tab ${tab === t.id ? "admin-tab--active" : ""} ${
+                t.badge ? "admin-tab--featured" : ""
+              }`}
+              aria-current={tab === t.id ? "page" : undefined}
+              onClick={() => setTab(t.id)}
+            >
+              {TAB_ICONS[t.id]}
+              <span>{t.label}</span>
+              {t.badge ? <em className="admin-tab__badge">{t.badge}</em> : null}
+            </button>
+          ))}
+        </nav>
 
-      <div className="admin-content">
-        {tab === "overview" ? (
-          <AdminOverviewPanel token={session.token} onSessionExpired={handleSessionExpired} />
-        ) : null}
-        {tab === "system" ? (
-          <AdminSystemPanel token={session.token} onSessionExpired={handleSessionExpired} />
-        ) : null}
-        {tab === "arena" ? (
-          <AdminArenaPanel token={session.token} onSessionExpired={handleSessionExpired} />
-        ) : null}
-        {tab === "players" ? (
-          <AdminPlayersPanel token={session.token} onSessionExpired={handleSessionExpired} />
-        ) : null}
-        {tab === "rooms" ? (
-          <AdminRoomsPanel token={session.token} onSessionExpired={handleSessionExpired} />
-        ) : null}
-        {tab === "games" ? (
-          <AdminGamesPanel token={session.token} onSessionExpired={handleSessionExpired} />
-        ) : null}
-        {tab === "economy" ? (
-          <AdminEconomyPanel token={session.token} onSessionExpired={handleSessionExpired} />
-        ) : null}
-        {tab === "integrity" ? (
-          <AdminIntegrityPanel token={session.token} onSessionExpired={handleSessionExpired} />
-        ) : null}
-        {tab === "seasons" ? (
-          <AdminSeasonsPanel token={session.token} onSessionExpired={handleSessionExpired} />
-        ) : null}
-        {tab === "settings" ? (
-          <AdminSettingsPanel token={session.token} onSessionExpired={handleSessionExpired} />
-        ) : null}
-        {tab === "audit" ? (
-          <AdminAuditPanel token={session.token} onSessionExpired={handleSessionExpired} />
-        ) : null}
+        <div className="ops-stage admin-content">
+          {tab === "overview" ? (
+            <AdminOverviewPanel token={session.token} onSessionExpired={handleSessionExpired} />
+          ) : null}
+          {tab === "system" ? (
+            <AdminSystemPanel token={session.token} onSessionExpired={handleSessionExpired} />
+          ) : null}
+          {tab === "arena" ? (
+            <AdminArenaPanel token={session.token} onSessionExpired={handleSessionExpired} />
+          ) : null}
+          {tab === "blast" ? (
+            <AdminBlastPanel token={session.token} onSessionExpired={handleSessionExpired} />
+          ) : null}
+          {tab === "players" ? (
+            <AdminPlayersPanel token={session.token} onSessionExpired={handleSessionExpired} />
+          ) : null}
+          {tab === "rooms" ? (
+            <AdminRoomsPanel token={session.token} onSessionExpired={handleSessionExpired} />
+          ) : null}
+          {tab === "games" ? (
+            <AdminGamesPanel token={session.token} onSessionExpired={handleSessionExpired} />
+          ) : null}
+          {tab === "economy" ? (
+            <AdminEconomyPanel token={session.token} onSessionExpired={handleSessionExpired} />
+          ) : null}
+          {tab === "integrity" ? (
+            <AdminIntegrityPanel token={session.token} onSessionExpired={handleSessionExpired} />
+          ) : null}
+          {tab === "seasons" ? (
+            <AdminSeasonsPanel token={session.token} onSessionExpired={handleSessionExpired} />
+          ) : null}
+          {tab === "settings" ? (
+            <AdminSettingsPanel token={session.token} onSessionExpired={handleSessionExpired} />
+          ) : null}
+          {tab === "audit" ? (
+            <AdminAuditPanel token={session.token} onSessionExpired={handleSessionExpired} />
+          ) : null}
+        </div>
       </div>
 
       <Modal open={pwModal} title="تغییر رمز عبور مدیر" onClose={() => setPwModal(false)}>
@@ -379,12 +407,7 @@ export function AdminPage() {
               onChange={(e) => setCurPw(e.target.value)}
             />
           </FormField>
-          <FormField
-            label="رمز عبور جدید"
-            htmlFor="new-pw"
-            hint="حداقل ۱۰ کاراکتر"
-            error={pwError}
-          >
+          <FormField label="رمز عبور جدید" htmlFor="new-pw" hint="حداقل ۱۰ کاراکتر" error={pwError}>
             <Input
               id="new-pw"
               type="password"

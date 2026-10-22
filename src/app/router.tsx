@@ -1,7 +1,9 @@
-import { lazy, Suspense } from "react";
+import { Fragment, lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { PageShell } from "@/components/layout/PageShell";
 import { LoadingSpinner } from "@/components/ui/Feedback";
+import { GAME_ROUTE_MODULES } from "@/games/gameModules";
+import { getGameById } from "@/games/registry";
 
 const HomePage = lazy(() =>
   import("@/features/home/HomePage").then((m) => ({ default: m.HomePage })),
@@ -36,36 +38,6 @@ const LeaderboardPage = lazy(() =>
 const ShopPage = lazy(() =>
   import("@/features/shop/ShopPage").then((m) => ({ default: m.ShopPage })),
 );
-const LastNightLobbyPage = lazy(() =>
-  import("@/features/lastNight/LastNightLobbyPage").then((m) => ({
-    default: m.LastNightLobbyPage,
-  })),
-);
-const LastNightRoomPage = lazy(() =>
-  import("@/features/lastNight/LastNightRoomPage").then((m) => ({
-    default: m.LastNightRoomPage,
-  })),
-);
-const WordCipherLobbyPage = lazy(() =>
-  import("@/features/wordGame/WordCipherLobbyPage").then((m) => ({
-    default: m.WordCipherLobbyPage,
-  })),
-);
-const WordCipherRoomPage = lazy(() =>
-  import("@/features/wordGame/WordCipherRoomPage").then((m) => ({
-    default: m.WordCipherRoomPage,
-  })),
-);
-const CodeBreakerLobbyPage = lazy(() =>
-  import("@/features/codeBreaker/CodeBreakerLobbyPage").then((m) => ({
-    default: m.CodeBreakerLobbyPage,
-  })),
-);
-const CodeBreakerRoomPage = lazy(() =>
-  import("@/features/codeBreaker/CodeBreakerRoomPage").then((m) => ({
-    default: m.CodeBreakerRoomPage,
-  })),
-);
 
 function RouteFallback() {
   return (
@@ -91,13 +63,21 @@ export function AppRouter() {
           <Route path="/rules" element={<RulesPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/admin" element={<AdminPage />} />
-          <Route path="/games/last-night" element={<LastNightLobbyPage />} />
-          <Route path="/games/last-night/room/:roomCode" element={<LastNightRoomPage />} />
-          <Route path="/games/arena2d" element={<LastNightLobbyPage />} />
-          <Route path="/games/word-cipher" element={<WordCipherLobbyPage />} />
-          <Route path="/games/word-cipher/room/:roomCode" element={<WordCipherRoomPage />} />
-          <Route path="/games/code-breaker" element={<CodeBreakerLobbyPage />} />
-          <Route path="/games/code-breaker/room/:roomCode" element={<CodeBreakerRoomPage />} />
+          {GAME_ROUTE_MODULES.map((mod) => {
+            const game = getGameById(mod.id);
+            if (!game || game.route === "/") return null;
+            return (
+              <Fragment key={mod.id}>
+                <Route path={game.route} element={<mod.Lobby />} />
+                {game.roomRoutePrefix ? (
+                  <Route path={`${game.roomRoutePrefix}/:roomCode`} element={<mod.Room />} />
+                ) : null}
+                {(game.routeAliases ?? []).map((alias) => (
+                  <Route key={alias} path={alias} element={<mod.Lobby />} />
+                ))}
+              </Fragment>
+            );
+          })}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

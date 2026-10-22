@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bot, Eye, Search, ShieldOff, UserX } from "lucide-react";
+import { Bot, ChevronLeft, ChevronRight, Eye, Search, ShieldOff, UserX } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
@@ -32,6 +32,8 @@ const STATUS_LABELS: Record<string, string> = {
   closed: "بسته",
 };
 
+const PAGE_SIZE = 50;
+
 export function AdminRoomsPanel({
   token,
   onSessionExpired,
@@ -45,23 +47,25 @@ export function AdminRoomsPanel({
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [detailCode, setDetailCode] = useState<string | null>(null);
   const [closeTarget, setCloseTarget] = useState<AdminRoomRow | null>(null);
   const [closing, setClosing] = useState(false);
 
   const load = useCallback(
-    async (opts?: { search?: string; status?: string }) => {
+    async (opts?: { search?: string; status?: string; offset?: number }) => {
       setLoading(true);
+      const nextOffset = opts?.offset ?? offset;
       try {
         const res = await adminApi.listRooms(token, {
-          search: opts?.search ?? "",
-          status: opts?.status || null,
-          limit: 50,
-          offset: 0,
+          search: opts?.search ?? search,
+          status: (opts?.status ?? status) || null,
+          limit: PAGE_SIZE,
+          offset: nextOffset,
         });
-        setItems(res.items);
-        setTotal(res.total);
+        setItems(res.items ?? []);
+        setTotal(res.total ?? 0);
       } catch (err) {
         const user = toUserError(err);
         if (user.code === "ADMIN_UNAUTHORIZED") {
@@ -73,11 +77,11 @@ export function AdminRoomsPanel({
         setLoading(false);
       }
     },
-    [onSessionExpired, showToast, token],
+    [offset, onSessionExpired, search, showToast, status, token],
   );
 
   useEffect(() => {
-    void load({ search: "", status: "" });
+    void load({ search: "", status: "", offset: 0 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -88,7 +92,7 @@ export function AdminRoomsPanel({
       await adminApi.closeRoom(token, closeTarget.room_code, "closed by admin panel");
       showToast(`اتاق ${closeTarget.room_code} بسته شد`, "success");
       setCloseTarget(null);
-      void load({ search, status });
+      void load({ search, status, offset });
     } catch (err) {
       const user = toUserError(err);
       if (user.code === "ADMIN_UNAUTHORIZED") {
@@ -109,7 +113,7 @@ export function AdminRoomsPanel({
         reason: `اخراج بازیکن ${symbol} توسط مدیر`,
       });
       showToast(`بازیکن ${symbol} از اتاق ${roomCode} اخراج شد.`, "success");
-      void load({ search, status });
+      void load({ search, status, offset });
     } catch (err) {
       const user = toUserError(err);
       if (user.code === "ADMIN_UNAUTHORIZED") {
@@ -138,7 +142,8 @@ export function AdminRoomsPanel({
         className="admin-toolbar"
         onSubmit={(e) => {
           e.preventDefault();
-          void load({ search, status });
+          setOffset(0);
+          void load({ search, status, offset: 0 });
         }}
       >
         <div className="admin-toolbar__search">
@@ -161,7 +166,8 @@ export function AdminRoomsPanel({
               aria-pressed={status === f.value}
               onClick={() => {
                 setStatus(f.value);
-                void load({ search, status: f.value });
+                setOffset(0);
+                void load({ search, status: f.value, offset: 0 });
               }}
             >
               {f.label}
@@ -273,16 +279,47 @@ export function AdminRoomsPanel({
           </table>
         </div>
       ) : null}
-      <p className="admin-panel__meta">
-        نمایش {items ? toFaDigits(items.length) : "۰"} از {toFaDigits(total)} اتاق (۵۰ مورد در هر صفحه)
-      </p>
+      <div className="ops-pager">
+        <span>
+          نمایش {items ? toFaDigits(total === 0 ? 0 : offset + 1) : "۰"}–
+          {items ? toFaDigits(Math.min(offset + items.length, total)) : "۰"} از {toFaDigits(total)} اتاق
+        </span>
+        <div className="row-actions">
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={offset <= 0 || loading}
+            icon={<ChevronRight size={14} />}
+            onClick={() => {
+              const next = Math.max(0, offset - PAGE_SIZE);
+              setOffset(next);
+              void load({ offset: next });
+            }}
+          >
+            صفحه قبل
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={offset + PAGE_SIZE >= total || loading}
+            onClick={() => {
+              const next = offset + PAGE_SIZE;
+              setOffset(next);
+              void load({ offset: next });
+            }}
+          >
+            صفحه بعد
+            <ChevronLeft size={14} aria-hidden="true" />
+          </Button>
+        </div>
+      </div>
 
       <RoomDetailModal
         token={token}
         roomCode={detailCode}
         onClose={() => setDetailCode(null)}
         onSessionExpired={onSessionExpired}
-        onUpdated={() => void load({ search, status })}
+        onUpdated={() => void load({ search, status, offset })}
       />
 
       <ConfirmDialog

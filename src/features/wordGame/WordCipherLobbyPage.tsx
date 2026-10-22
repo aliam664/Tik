@@ -143,7 +143,7 @@ export function WordCipherLobbyPage() {
   // =========================================================================
   if (soloCtrl && soloSnapshot) {
     return (
-              <div className="container stack stack--lg" style={{ paddingBlock: "1.5rem" }}>
+              <div className="container wg-arena stack stack--lg" style={{ paddingBlock: "1.5rem" }}>
           <div className="row row--between row--wrap">
             <div className="row row--sm row--wrap">
               <Badge tone="gold">حالت تک‌نفره با هوش مصنوعی رازواژه</Badge>
@@ -238,16 +238,22 @@ export function WordCipherLobbyPage() {
   // Main Multiplayer + Solo Lobby View
   // =========================================================================
   return (
-          <div className="container stack stack--lg" style={{ paddingBlock: "1.75rem" }}>
+          <div className="container wg-arena stack stack--lg" style={{ paddingBlock: "1.75rem" }}>
         {/* Hero Banner */}
         <section className="wg-hero">
           <div className="stack stack--md">
             <div className="wg-hero__badges">
+              <span className="g-kicker">WORD CIPHER</span>
               <Badge tone="gold">RAZ-VAJEH · WORD CIPHER</Badge>
               <Badge tone="success">۲ نفره آنلاین + تمرین با AI</Badge>
               <Badge tone="info">{WORD_CATEGORIES.length} دسته‌بندی · {WORD_BANK.length} واژه</Badge>
             </div>
             <h1 style={{ margin: 0 }}>رازواژه — نبرد تداعی و کشف واژه مخفی</h1>
+            <div className="wg-mini-board" aria-hidden="true">
+              {["آتشفشان", "کهکشان", "شطرنج", "نقشه", "ویولن", "الماس", "پلنگ", "فانوس"].map((w) => (
+                <span key={w}>{w}</span>
+              ))}
+            </div>
             <p className="muted" style={{ lineHeight: 1.75 }}>
               در هر راند <strong>۴ دسته‌بندی و ۱۶ کارت واژه</strong> آماده می‌شود. بازیکن{" "}
               <strong>راهنما</strong> یک واژه مخفی انتخاب کرده و سرنخ هوشمند می‌دهد؛ بازیکن{" "}
@@ -276,7 +282,7 @@ export function WordCipherLobbyPage() {
         </section>
 
         {/* Shared Display Name Bar */}
-        <Card className="row row--between row--wrap" style={{ gap: "1rem" }}>
+        <Card framed className="row row--between row--wrap" style={{ gap: "1rem" }}>
           <div className="stack stack--xs" style={{ flex: "1 1 260px" }}>
             <label htmlFor="wg-player-name" style={{ fontWeight: 700 }}>
               نام نمایشی شما در بازی رازواژه
@@ -299,8 +305,9 @@ export function WordCipherLobbyPage() {
         {/* 3 Main Action Cards */}
         <div className="wg-lobby-grid">
           {/* 1. Create Online Room */}
-          <Card className="stack stack--md">
+          <Card framed className="stack stack--md">
             <div className="stack stack--xs">
+              <span className="g-kicker">HOST TABLE</span>
               <Badge tone="gold">ساخت اتاق خصوصی آنلاین</Badge>
               <h2>میزبانی اتاق ۲ نفره</h2>
               <p className="muted" style={{ fontSize: "0.88rem" }}>
@@ -416,8 +423,9 @@ export function WordCipherLobbyPage() {
           </Card>
 
           {/* 2. Join Online Room */}
-          <Card className="stack stack--md">
+          <Card framed className="stack stack--md">
             <div className="stack stack--xs">
+              <span className="g-kicker">JOIN</span>
               <Badge tone="info">اتصال از دستگاه دوم</Badge>
               <h2>ورود با کد ۶ رقمی اتاق</h2>
               <p className="muted" style={{ fontSize: "0.88rem" }}>
@@ -470,8 +478,9 @@ export function WordCipherLobbyPage() {
           </Card>
 
           {/* 3. Solo AI & Word Bank Showcase */}
-          <Card className="stack stack--md">
+          <Card framed className="stack stack--md">
             <div className="stack stack--xs">
+              <span className="g-kicker">SOLO AI</span>
               <Badge tone="success">تمرین فوری بدون انتظار</Badge>
               <h2>بازی تک‌نفره با هوش مصنوعی</h2>
               <p className="muted" style={{ fontSize: "0.88rem" }}>

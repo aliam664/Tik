@@ -1,0 +1,577 @@
+/* =========================================================================
+   SHERIFF BLAST — انفجار شریف
+   Tactical dark carbon & brushed gold · matches hub / رمزگشا language
+   ========================================================================= */
+
+.crash-page {
+  --crash-hot: var(--success);
+  --crash-cold: var(--error);
+  position: relative;
+  isolation: isolate;
+  max-width: min(1180px, calc(100% - 2 * var(--page-pad)));
+  margin-inline: auto;
+  padding: 18px 0 56px;
+  display: grid;
+  gap: 16px;
+}
+
+.crash-page::before {
+  content: "";
+  position: absolute;
+  inset: -48px -12px auto;
+  height: 380px;
+  background:
+    radial-gradient(ellipse 70% 80% at 8% 0%, rgba(232, 93, 76, 0.12), transparent 55%),
+    radial-gradient(ellipse 60% 70% at 92% 10%, rgba(229, 169, 60, 0.14), transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.crash-page > * {
+  position: relative;
+  z-index: 1;
+}
+
+.crash-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: end;
+  padding: clamp(1rem, 2.4vw, 1.7rem);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(110% 100% at 100% 0%, rgba(229, 169, 60, 0.16), transparent 55%),
+    radial-gradient(95% 95% at 0% 100%, rgba(255, 101, 119, 0.1), transparent 55%),
+    linear-gradient(165deg, #161b26, #0b0f16 72%);
+  border: 1px solid var(--border-gold);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    var(--shadow-m);
+}
+
+.crash-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--gold);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin: 0 0 6px;
+  font-weight: 700;
+}
+
+.crash-hero h1 {
+  margin: 0;
+  font-size: clamp(1.55rem, 3vw, 2.15rem);
+  letter-spacing: -0.02em;
+}
+
+.crash-lead {
+  margin: 8px 0 0;
+  color: var(--text-2);
+  max-width: 54ch;
+  line-height: 1.75;
+  font-size: 14.5px;
+}
+
+.crash-wallet {
+  background: var(--gold-softer);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-m);
+  padding: 12px 18px 14px;
+  min-width: 180px;
+  box-shadow: var(--shadow-gold);
+}
+
+.crash-wallet span,
+.crash-wallet small {
+  display: block;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.crash-wallet strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.55rem;
+  color: var(--gold-strong);
+  font-variant-numeric: tabular-nums;
+  margin: 4px 0;
+}
+
+.crash-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-m);
+  background: var(--error-soft);
+  border: 1px solid rgba(255, 101, 119, 0.28);
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.crash-history {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.crash-history li {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  padding: 4px 9px;
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+}
+
+.crash-history li.is-hot {
+  color: var(--success);
+  background: var(--success-soft);
+  border-color: rgba(57, 201, 138, 0.28);
+}
+
+.crash-history li.is-cold {
+  color: var(--error);
+  background: var(--error-soft);
+  border-color: rgba(255, 101, 119, 0.25);
+}
+
+.crash-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
+  gap: 14px;
+  align-items: start;
+}
+
+.crash-stage__chart {
+  position: relative;
+  border-radius: var(--radius-l);
+  border: 1px solid var(--border-gold);
+  background: var(--surface);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    var(--shadow-s);
+  overflow: hidden;
+  transition: box-shadow var(--tr) var(--ease-out), border-color var(--tr);
+}
+
+.crash-stage__chart.is-flying {
+  border-color: rgba(229, 169, 60, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px rgba(229, 169, 60, 0.2),
+    0 0 42px rgba(229, 169, 60, 0.18);
+}
+
+.crash-stage__chart.is-hot {
+  border-color: rgba(255, 179, 71, 0.65);
+  box-shadow:
+    0 0 0 1px rgba(255, 138, 76, 0.28),
+    0 0 56px rgba(255, 138, 76, 0.22);
+}
+
+.crash-stage__chart.is-blaze {
+  border-color: rgba(255, 101, 119, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(255, 101, 119, 0.3),
+    0 0 64px rgba(255, 90, 70, 0.28);
+}
+
+.crash-stage__chart.is-crashed {
+  border-color: rgba(255, 101, 119, 0.7);
+  animation: crashStageBoom 0.7s var(--ease-out);
+}
+
+.crash-stage__hud {
+  position: absolute;
+  inset: 10px 12px auto;
+  z-index: 2;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  pointer-events: none;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.crash-phase {
+  font-style: normal;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.crash-phase--betting { color: var(--gold); border-color: var(--border-gold); }
+.crash-phase--flying { color: var(--success); border-color: rgba(57, 201, 138, 0.4); }
+.crash-phase--crashed { color: var(--error); border-color: rgba(255, 101, 119, 0.4); }
+
+.crash-canvas {
+  width: 100%;
+  height: min(58vh, 480px);
+  display: block;
+  background: transparent;
+}
+
+.crash-mult {
+  position: absolute;
+  inset: 16% auto auto 11%;
+  z-index: 2;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 54%;
+}
+
+.crash-mult small {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  font-weight: 700;
+}
+
+.crash-mult strong {
+  font-size: clamp(2.6rem, 7.2vw, 5rem);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 0.92;
+  color: var(--gold-strong);
+  text-shadow:
+    0 0 18px rgba(229, 169, 60, 0.35),
+    0 8px 28px rgba(0, 0, 0, 0.45);
+  font-variant-numeric: tabular-nums;
+}
+
+.crash-mult--betting strong {
+  animation: crashMultWait 1.05s ease-in-out infinite;
+}
+
+.crash-mult--flying strong {
+  animation: crashMultPulse 1.15s ease-in-out infinite;
+}
+
+.crash-mult--flying.is-hot strong {
+  color: #ffb347;
+  animation: crashMultPulse 0.72s ease-in-out infinite;
+  text-shadow:
+    0 0 22px rgba(255, 179, 71, 0.55),
+    0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+.crash-mult--flying.is-blaze strong {
+  color: #ff6b5a;
+  animation: crashMultBlaze 0.42s ease-in-out infinite;
+  text-shadow:
+    0 0 26px rgba(255, 90, 70, 0.65),
+    0 0 48px rgba(255, 101, 119, 0.35);
+}
+
+.crash-mult--crashed strong {
+  color: var(--error);
+  animation: crashMultBoom 0.55s var(--ease-out);
+  text-shadow:
+    0 0 28px rgba(255, 101, 119, 0.55),
+    0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.crash-history li:first-child {
+  animation: crashChipIn 0.4s var(--ease-out);
+}
+
+.crash-cash-bar {
+  position: absolute;
+  inset: auto 12px 12px;
+  z-index: 3;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.crash-cash-bar .btn {
+  animation: crashCashPulse 1.05s ease-in-out infinite;
+  box-shadow: 0 8px 28px rgba(229, 169, 60, 0.32);
+}
+
+.crash-docks {
+  display: grid;
+  gap: 10px;
+}
+
+.crash-dock,
+.crash-session,
+.crash-fair__body,
+.crash-feed {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 28%),
+    linear-gradient(180deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  padding: 14px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.crash-dock {
+  display: grid;
+  gap: 8px;
+}
+
+.crash-dock header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.crash-dock header em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.crash-dock label {
+  display: grid;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+
+.crash-dock input[type="number"],
+.crash-dock input[type="text"],
+.crash-auto input:not([type="checkbox"]) {
+  height: 42px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--text);
+  padding: 0 10px;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.crash-dock input:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.crash-chip-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.crash-chip-row button {
+  flex: 1;
+  min-width: 36px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-gold);
+  background: var(--gold-softer);
+  color: var(--gold);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.crash-chip-row button:hover {
+  background: var(--gold-soft);
+}
+
+.crash-auto {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  grid-template-columns: unset;
+}
+
+.crash-auto input:not([type="checkbox"]) {
+  flex: 1;
+  height: 36px;
+  min-width: 0;
+}
+
+.crash-session {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0;
+}
+
+.crash-session dt {
+  font-size: 11.5px;
+  color: var(--text-3);
+  margin-bottom: 4px;
+}
+
+.crash-session dd {
+  margin: 0;
+  font-size: 15px;
+}
+
+.is-up { color: var(--success); }
+.is-down { color: var(--error); }
+
+.crash-feed h2 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.crash-empty {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.crash-feed ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.crash-feed li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-2);
+  padding: 6px 8px;
+  border-radius: 10px;
+}
+
+.crash-feed li.is-me {
+  background: var(--gold-softer);
+  border: 1px solid var(--border-gold);
+}
+
+.crash-fair__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: 0;
+  color: var(--gold);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 0;
+  font-weight: 700;
+}
+
+.crash-fair__body p {
+  margin: 8px 0;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.7;
+}
+
+.crash-fair__body code {
+  display: block;
+  margin-top: 4px;
+  word-break: break-all;
+  font-size: 11px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+@keyframes crashMultPulse {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.045); filter: brightness(1.12); }
+}
+
+@keyframes crashMultBlaze {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.07) rotate(-0.4deg); }
+}
+
+@keyframes crashMultWait {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.72; transform: scale(0.985); }
+}
+
+@keyframes crashMultBoom {
+  0% { transform: scale(0.72); opacity: 0.4; filter: blur(4px); }
+  55% { transform: scale(1.08); opacity: 1; filter: blur(0); }
+  100% { transform: scale(1); }
+}
+
+@keyframes crashStageBoom {
+  0% { transform: translate(0, 0); }
+  18% { transform: translate(-3px, 2px); }
+  36% { transform: translate(3px, -2px); }
+  54% { transform: translate(-2px, -1px); }
+  100% { transform: none; }
+}
+
+@keyframes crashCashPulse {
+  0%, 100% { transform: translateY(0); box-shadow: 0 8px 28px rgba(229, 169, 60, 0.28); }
+  50% { transform: translateY(-2px); box-shadow: 0 12px 34px rgba(229, 169, 60, 0.48); }
+}
+
+@keyframes crashChipIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.9); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crash-mult strong,
+  .crash-cash-bar .btn,
+  .crash-history li:first-child,
+  .crash-stage__chart.is-crashed {
+    animation: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .crash-hero,
+  .crash-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .crash-wallet {
+    min-width: 0;
+  }
+
+  .crash-canvas {
+    height: min(46vh, 360px);
+  }
+
+  .crash-mult {
+    inset: 12% auto auto 8%;
+  }
+
+  .crash-mult strong {
+    font-size: clamp(2.1rem, 12vw, 3.4rem);
+  }
+}
+
+@media (max-width: 480px) {
+  .crash-feed li {
+    grid-template-columns: 1fr auto;
+  }
+
+  .crash-cash-bar {
+    flex-direction: column;
+  }
+
+  .crash-cash-bar .btn {
+    width: 100%;
+  }
+}

@@ -148,10 +148,10 @@ export function AdminOverviewPanel({
       <div className="admin-panel-head">
         <div>
           <h2 className="card__title" style={{ fontSize: "1.15rem" }}>
-            مرکز فرماندهی و آمار زنده پلتفرم
+            مرکز فرمان — تله‌متری زنده پلتفرم
           </h2>
           <p className="card__sub">
-            آخرین همگام‌سازی با سرور: {formatDateTime(dash.server_now)}
+            همگام‌سازی SOC: {formatDateTime(dash.server_now)}
           </p>
         </div>
         <Button

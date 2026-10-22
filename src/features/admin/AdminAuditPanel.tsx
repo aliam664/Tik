@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState, LoadingSpinner } from "@/components/ui/Feedback";
 import { useToast } from "@/components/ui/Toast";
 import { adminApi } from "@/lib/api";
@@ -14,18 +16,20 @@ export function AdminAuditPanel({
   onSessionExpired: () => void;
 }) {
   const { showToast } = useToast();
+  const PAGE_SIZE = 100;
   const [items, setItems] = useState<AuditRow[] | null>(null);
   const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (nextOffset = offset) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await adminApi.audit(token, 100, 0);
-      setItems(res.items);
-      setTotal(res.total);
+      const res = await adminApi.audit(token, PAGE_SIZE, nextOffset);
+      setItems(res.items ?? []);
+      setTotal(res.total ?? 0);
     } catch (err) {
       const user = toUserError(err);
       if (user.code === "ADMIN_UNAUTHORIZED") {
@@ -37,7 +41,7 @@ export function AdminAuditPanel({
     } finally {
       setLoading(false);
     }
-  }, [onSessionExpired, showToast, token]);
+  }, [offset, onSessionExpired, showToast, token]);
 
   useEffect(() => {
     void load();
@@ -96,7 +100,32 @@ export function AdminAuditPanel({
           </table>
         </div>
       ) : null}
-      <p className="admin-panel__meta">مجموع {toFaDigits(total)} رکورد — بدون ذخیره رمز یا توکن</p>
+      <div className="ops-pager">
+        <span>
+          مجموع {toFaDigits(total)} رکورد — بدون ذخیره رمز یا توکن
+          {items ? ` · ${toFaDigits(total === 0 ? 0 : offset + 1)}–${toFaDigits(Math.min(offset + items.length, total))}` : ""}
+        </span>
+        <div className="row-actions">
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={offset <= 0 || loading}
+            icon={<ChevronRight size={14} />}
+            onClick={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))}
+          >
+            صفحه قبل
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={offset + PAGE_SIZE >= total || loading}
+            onClick={() => setOffset((o) => o + PAGE_SIZE)}
+          >
+            صفحه بعد
+            <ChevronLeft size={14} aria-hidden="true" />
+          </Button>
+        </div>
+      </div>
     </section>
   );
 }

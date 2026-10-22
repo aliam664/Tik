@@ -136,7 +136,7 @@ export function CodeBreakerLobbyPage() {
 
   if (soloCtrl && soloSnapshot) {
     return (
-      <div className="container stack stack--lg" style={{ paddingBlock: "1.5rem" }}>
+      <div className="container cb-arena stack stack--lg" style={{ paddingBlock: "1.5rem" }}>
         <div className="row row--between row--wrap">
           <div className="row row--xs">
             <Badge tone="gold">مسابقه تمرینی زنده با رقیب هوشمند منطقی</Badge>
@@ -182,7 +182,7 @@ export function CodeBreakerLobbyPage() {
   }
 
   return (
-    <div className="container stack stack--lg" style={{ paddingBlock: "1.75rem" }}>
+    <div className="container cb-arena stack stack--lg" style={{ paddingBlock: "1.75rem" }}>
       {/* Hero Banner */}
       <section className="cb-hero">
         <div className="stack stack--md">
@@ -191,9 +191,16 @@ export function CodeBreakerLobbyPage() {
             <Badge tone="success">Server-Authoritative · Zero-Leak</Badge>
             <Badge tone="info">پاداش Sheriff Coin</Badge>
           </div>
-          <h1 style={{ fontSize: "clamp(1.7rem, 3.3vw, 2.45rem)", margin: 0 }}>
+          <span className="g-kicker">CODE BREAKER · 0000–9999</span>
+          <h1 style={{ margin: 0 }}>
             رمزگشا — نبرد زنده کشف کد مخفی ۴ رقمی
           </h1>
+          <div className="cb-sample-lock" aria-hidden="true">
+            <span>0</span>
+            <span>0</span>
+            <span>7</span>
+            <span>2</span>
+          </div>
           <p className="muted" style={{ margin: 0, lineHeight: 1.75 }}>
             سرور یک <strong>کد مخفی ۴ رقمی واحد</strong> (شامل صفرهای ابتدایی مثل{" "}
             <code style={{ color: "#f3be58" }}>0072</code> و ارقام تکراری مثل{" "}
@@ -218,9 +225,12 @@ export function CodeBreakerLobbyPage() {
       {/* Three Action Cards: Create Room | Join Room | Rules & Feedback Guide */}
       <div className="cb-lobby-grid">
         {/* Card 1: Create Multiplayer Room */}
-        <Card className="stack stack--md">
+        <Card framed className="stack stack--md">
           <div className="row row--between">
-            <h2 style={{ margin: 0, fontSize: "1.2rem" }}>۱. ساخت اتاق ۲ نفره آنلاین</h2>
+            <div className="stack stack--xs">
+              <span className="g-kicker">HOST</span>
+              <h2 style={{ margin: 0, fontSize: "1.2rem" }}>۱. ساخت اتاق ۲ نفره آنلاین</h2>
+            </div>
             <Badge tone="gold">میزبان</Badge>
           </div>
 
@@ -260,9 +270,12 @@ export function CodeBreakerLobbyPage() {
         </Card>
 
         {/* Card 2: Join Existing Room */}
-        <Card className="stack stack--md">
+        <Card framed className="stack stack--md">
           <div className="row row--between">
-            <h2 style={{ margin: 0, fontSize: "1.2rem" }}>۲. ورود به اتاق با کد دعوت</h2>
+            <div className="stack stack--xs">
+              <span className="g-kicker">JOIN</span>
+              <h2 style={{ margin: 0, fontSize: "1.2rem" }}>۲. ورود به اتاق با کد دعوت</h2>
+            </div>
             <Badge tone="info">مهمان</Badge>
           </div>
 
@@ -305,9 +318,12 @@ export function CodeBreakerLobbyPage() {
         </Card>
 
         {/* Card 3: Deterministic Feedback Spec */}
-        <Card className="stack stack--sm">
+        <Card framed className="stack stack--sm">
           <div className="row row--between">
-            <h2 style={{ margin: 0, fontSize: "1.2rem" }}>۳. قوانین دقیق رنگ‌ها</h2>
+            <div className="stack stack--xs">
+              <span className="g-kicker">FEEDBACK SPEC</span>
+              <h2 style={{ margin: 0, fontSize: "1.2rem" }}>۳. قوانین دقیق رنگ‌ها</h2>
+            </div>
             <Badge tone="success">قطعی و شفاف</Badge>
           </div>
 
@@ -315,15 +331,24 @@ export function CodeBreakerLobbyPage() {
             کد مخفی دقیقاً یک رشته ۴ رقمی از <code>0000</code> تا <code>9999</code> است. پس از تایید آمادگی هر دو بازیکن، تایمر سرور آغاز می‌شود:
           </p>
 
-          <div className="stack stack--xs" style={{ fontSize: "0.83rem" }}>
-            <div>
-              <strong style={{ color: "#6ee7b7" }}>🟢 سبز (GREEN):</strong> هم رقم درست است و هم جایگاه آن (P1 تا P4) کاملاً درست است.
+          <div className="stack stack--sm">
+            <div className="cb-rule-swatch">
+              <i className="g">G</i>
+              <div>
+                <strong style={{ color: "#6ee7b7" }}>سبز (GREEN):</strong> هم رقم درست است و هم جایگاه آن (P1 تا P4) کاملاً درست است.
+              </div>
             </div>
-            <div>
-              <strong style={{ color: "#fcd34d" }}>🟡 زرد (YELLOW):</strong> رقم در باقی‌مانده ارقام تطبیق‌نیافته کد مخفی وجود دارد ولی جایگاهش متفاوت است (بدون شمارش مضاعف ارقام تکراری!).
+            <div className="cb-rule-swatch">
+              <i className="y">Y</i>
+              <div>
+                <strong style={{ color: "#fcd34d" }}>زرد (YELLOW):</strong> رقم در باقی‌مانده ارقام تطبیق‌نیافته کد مخفی وجود دارد ولی جایگاهش متفاوت است (بدون شمارش مضاعف).
+              </div>
             </div>
-            <div>
-              <strong style={{ color: "#fca5a5" }}>🔴 قرمز (RED):</strong> این رقم اصلاً در کد مخفی نیست یا ظرفیت تکرار آن قبلاً پر شده است.
+            <div className="cb-rule-swatch">
+              <i className="r">R</i>
+              <div>
+                <strong style={{ color: "#cbd5e1" }}>خاکستری:</strong> این رقم اصلاً در کد مخفی نیست یا ظرفیت تکرار آن قبلاً پر شده است.
+              </div>
             </div>
           </div>
         </Card>

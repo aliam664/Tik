@@ -9,6 +9,8 @@ import "./styles/pages.css";
 import "./styles/economy.css";
 import "./styles/word-game.css";
 import "./styles/code-breaker.css";
+import "./styles/crash.css";
+import "./styles/admin.css";
 
 const rootEl = document.getElementById("root");
 if (!rootEl) {
