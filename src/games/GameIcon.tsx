@@ -1,6 +1,7 @@
 import {
   Compass,
   Crown,
+  Dices,
   Flame,
   Gamepad2,
   Rocket,
@@ -34,5 +35,7 @@ export function GameIcon({ icon, size = 22 }: { icon: PlatformGameIcon; size?: n
       return <Sparkles size={size} aria-hidden="true" />;
     case "compass":
       return <Compass size={size} aria-hidden="true" />;
+    case "dice":
+      return <Dices size={size} aria-hidden="true" />;
   }
 }

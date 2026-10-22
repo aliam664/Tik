@@ -1,6 +1,8 @@
 import { adminApi } from "./api/admin.api";
 import { rpc } from "./api/client";
 import { codeBreakerApi } from "./api/codeBreaker.api";
+import { crashApi } from "./api/crash.api";
+import { diceApi } from "./api/dice.api";
 import { economyApi } from "./api/economy.api";
 import { lastNightApi } from "./api/lastNight.api";
 import { matchmakingApi } from "./api/matchmaking.api";
@@ -16,6 +18,8 @@ export const api = {
 export {
   adminApi,
   codeBreakerApi,
+  crashApi,
+  diceApi,
   economyApi,
   lastNightApi,
   matchmakingApi,

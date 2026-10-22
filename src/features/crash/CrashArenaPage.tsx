@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Flame, ShieldAlert, ShieldCheck } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Flame, RefreshCw, ShieldAlert, ShieldCheck, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { CoinAmount } from "@/components/ui/Coin";
 import { useToast } from "@/components/ui/Toast";
-import type { CrashSalonState } from "@/games/crash/engine";
 import { CrashRenderer, type CrashFrame } from "@/games/crash/renderer";
 import {
   BETTING_MS,
@@ -17,11 +16,13 @@ import {
   payoutFor,
   verifyFair,
 } from "@/games/crash/math";
-import { getSharedSalon } from "@/games/crash/salon";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useEconomyProfile } from "@/hooks/useEconomyProfile";
+import { crashApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { toFaDigits } from "@/lib/format";
+import { supabase } from "@/lib/supabase";
+import type { CrashServerState } from "@/types/crash";
 
 const BET_ERROR: Record<string, string> = {
   BETTING_CLOSED: "پنجرهٔ شرط این راند بسته شده.",
@@ -32,40 +33,53 @@ const BET_ERROR: Record<string, string> = {
   NOT_FLYING: "الان در حال پرواز نیست.",
   ALREADY_CASHED: "این شرط قبلاً برداشت شده.",
   ALREADY_CRASHED: "انفجار زودتر رخ داد.",
+  DAILY_LOSS_CAP: "به سقف باخت روزانه رسیده‌اید؛ برای امروز استراحت کنید.",
 };
 
 type SlotDraft = { stake: number; autoOn: boolean; auto: string };
+type BusyAction = `bet-${0 | 1}` | `cash-${string}` | null;
 
-function frameFromState(state: CrashSalonState, now: number): CrashFrame {
-  const r = state.round;
-  if (r.phase === "betting") {
+function asMs(value: string | null): number | null {
+  if (!value) return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function frameFromState(state: CrashServerState, now: number): CrashFrame {
+  const round = state.round;
+  const bettingEnd = asMs(round.betting_ends_at) ?? now;
+  if (round.phase === "betting") {
     return {
       kind: "betting",
-      closesInMs: r.bettingEndsAt - now,
+      closesInMs: bettingEnd - now,
       bettingMs: BETTING_MS,
-      lastCrash: r.history[r.history.length - 1] ?? null,
+      lastCrash: state.history[0]?.crash_point ?? null,
     };
   }
-  if (r.phase === "flying" && r.flyingStartedAt !== null) {
-    return { kind: "flying", elapsedMs: now - r.flyingStartedAt };
+
+  const flyingStart = asMs(round.flying_started_at) ?? bettingEnd;
+  if (round.phase === "flying") {
+    return { kind: "flying", elapsedMs: now - flyingStart };
   }
-  const crashedAt = r.crashedAt ?? now;
-  const flyStart = r.flyingStartedAt ?? crashedAt;
+
+  const crashedAt = asMs(round.crashed_at) ?? now;
+  const nextAt = asMs(round.next_at) ?? crashedAt + CRASHED_MS;
   return {
     kind: "crashed",
-    elapsedMs: r.crashPoint ? elapsedAt(r.crashPoint) : crashedAt - flyStart,
-    crashPoint: r.crashPoint ?? 100,
+    elapsedMs: round.crash_point ? elapsedAt(round.crash_point) : crashedAt - flyingStart,
+    crashPoint: round.crash_point ?? 100,
     sinceCrashMs: now - crashedAt,
-    nextInMs: (r.nextAt ?? crashedAt + CRASHED_MS) - now,
+    nextInMs: nextAt - now,
   };
 }
 
-function liveMult(state: CrashSalonState | null, now: number): number | null {
+function liveMult(state: CrashServerState | null, now: number): number | null {
   if (!state) return null;
-  if (state.round.phase === "flying" && state.round.flyingStartedAt !== null) {
-    return multiplierAt(now - state.round.flyingStartedAt);
+  if (state.round.phase === "flying") {
+    const started = asMs(state.round.flying_started_at);
+    return started === null ? 100 : multiplierAt(now - started);
   }
-  if (state.round.phase === "crashed") return state.round.crashPoint;
+  if (state.round.phase === "crashed") return state.round.crash_point;
   return null;
 }
 
@@ -76,39 +90,92 @@ function parseAuto(on: boolean, raw: string): number | null {
   return Math.round(n * 100);
 }
 
-function clampStake(n: number): number {
-  if (!Number.isFinite(n)) return MIN_BET;
-  return Math.min(MAX_BET, Math.max(MIN_BET, Math.floor(n)));
+function clampStake(n: number, min = MIN_BET, max = MAX_BET): number {
+  if (!Number.isFinite(n)) return min;
+  return Math.min(max, Math.max(min, Math.floor(n)));
 }
 
-const PHASE_LABEL: Record<string, string> = {
+const PHASE_LABEL = {
   betting: "شرط‌بندی",
   flying: "پرواز",
   crashed: "انفجار",
-};
+} as const;
 
 export function CrashArenaPage() {
   useDocumentTitle("انفجار شریف | Sheriff Blast");
-  const { profile } = useEconomyProfile();
+  const { profile, token, loading: profileLoading, refreshProfile } = useEconomyProfile();
   const { showToast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const salonRef = useRef(getSharedSalon(profile?.coins ?? 250));
-  const [state, setState] = useState<CrashSalonState | null>(null);
+  const stateRef = useRef<CrashServerState | null>(null);
+  const serverOffsetRef = useRef(0);
+  const actionBusyRef = useRef(false);
+  const requestRef = useRef(0);
+
+  const [state, setState] = useState<CrashServerState | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [fairOpen, setFairOpen] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [busyAction, setBusyAction] = useState<BusyAction>(null);
   const [slots, setSlots] = useState<[SlotDraft, SlotDraft]>([
     { stake: 20, autoOn: false, auto: "2.00" },
     { stake: 20, autoOn: false, auto: "5.00" },
   ]);
 
+  const acceptState = (next: CrashServerState) => {
+    const sampled = asMs(next.round.server_now);
+    if (sampled !== null) serverOffsetRef.current = sampled - Date.now();
+    stateRef.current = next;
+    setState(next);
+    setConnectionError(null);
+  };
+
   useEffect(() => {
-    if (profile?.coins === undefined) return;
-    salonRef.current.seedBalance(profile.coins);
-  }, [profile?.coins]);
+    let alive = true;
+    let fetching = false;
+
+    const pull = async () => {
+      if (fetching || actionBusyRef.current) return;
+      fetching = true;
+      const request = ++requestRef.current;
+      try {
+        const next = await crashApi.getState(token);
+        if (alive && request === requestRef.current) acceptState(next);
+      } catch (err) {
+        if (alive) setConnectionError(getErrorMessage(err));
+      } finally {
+        fetching = false;
+      }
+    };
+
+    void pull();
+    const poll = window.setInterval(() => void pull(), 700);
+    const onFocus = () => void pull();
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("online", onFocus);
+
+    let cleanupChannel: (() => void) | null = null;
+    try {
+      const channel = supabase
+        .channel("crash:salon")
+        .on("broadcast", { event: "state" }, () => void pull())
+        .subscribe();
+      cleanupChannel = () => void supabase.removeChannel(channel);
+    } catch {
+      cleanupChannel = null;
+    }
+
+    return () => {
+      alive = false;
+      requestRef.current += 1;
+      window.clearInterval(poll);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("online", onFocus);
+      cleanupChannel?.();
+    };
+  }, [token]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const salon = salonRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -125,17 +192,16 @@ export function CrashArenaPage() {
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
 
-    setState(salon.getState());
     let raf = 0;
     let lastUi = 0;
     const loop = () => {
-      const t = Date.now();
-      const snap = salon.getState(t);
-      renderer.draw(frameFromState(snap, t));
-      if (t - lastUi > 80) {
-        lastUi = t;
-        setNow(t);
-        setState(snap);
+      const clientTime = Date.now();
+      const authoritativeNow = clientTime + serverOffsetRef.current;
+      const snapshot = stateRef.current;
+      if (snapshot) renderer.draw(frameFromState(snapshot, authoritativeNow));
+      if (clientTime - lastUi > 80) {
+        lastUi = clientTime;
+        setNow(authoritativeNow);
       }
       raf = window.requestAnimationFrame(loop);
     };
@@ -148,47 +214,60 @@ export function CrashArenaPage() {
 
   const shown = liveMult(state, now);
   const phase = state?.round.phase ?? "betting";
-  const myOpen = state?.round.bets.filter((b) => b.isMe && b.cashedAt === null) ?? [];
+  const myOpen = state?.bets.filter((bet) => bet.is_me && bet.cashed_at === null) ?? [];
+  const minBet = state?.limits.min_bet ?? MIN_BET;
+  const maxBet = state?.limits.max_bet ?? MAX_BET;
+  const balance = state?.wallet.balance ?? profile?.coins ?? 0;
 
-  const onBet = useCallback(
-    (slot: 0 | 1) => {
-      const draft = slots[slot];
-      try {
-        salonRef.current.placeBet(
-          clampStake(draft.stake),
-          parseAuto(draft.autoOn, draft.auto),
-          profile?.display_name ?? "شوالیه",
-          Date.now(),
-          slot,
-        );
-      } catch (err) {
-        const code = err instanceof Error ? err.message : "";
-        showToast(BET_ERROR[code] ?? getErrorMessage(err), "error");
-      }
-    },
-    [profile?.display_name, showToast, slots],
-  );
+  const runServerAction = async (
+    action: Exclude<BusyAction, null>,
+    request: () => Promise<CrashServerState>,
+  ) => {
+    if (actionBusyRef.current) return;
+    actionBusyRef.current = true;
+    setBusyAction(action);
+    const requestId = ++requestRef.current;
+    try {
+      const next = await request();
+      if (requestId === requestRef.current) acceptState(next);
+      void refreshProfile();
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      showToast(BET_ERROR[code] ?? getErrorMessage(err), "error");
+    } finally {
+      actionBusyRef.current = false;
+      setBusyAction(null);
+    }
+  };
 
-  const onCash = useCallback(
-    (id: string) => {
-      try {
-        salonRef.current.cashOut(id);
-      } catch (err) {
-        const code = err instanceof Error ? err.message : "";
-        showToast(BET_ERROR[code] ?? getErrorMessage(err), "error");
-      }
-    },
-    [showToast],
-  );
+  const onBet = (slot: 0 | 1) => {
+    if (!token) {
+      showToast("کیف پول شریف‌کوین هنوز آماده نیست؛ چند لحظه صبر کنید.", "error");
+      return;
+    }
+    const draft = slots[slot];
+    const autoAt = parseAuto(draft.autoOn, draft.auto);
+    if (draft.autoOn && autoAt === null) {
+      showToast("ضریب برداشت خودکار باید حداقل ۱٫۰۱× باشد.", "error");
+      return;
+    }
+    const amount = clampStake(draft.stake, minBet, maxBet);
+    void runServerAction(`bet-${slot}`, () => crashApi.placeBet(token, amount, autoAt, slot));
+  };
 
-  const fair = useMemo(() => {
-    if (!state?.round.seed || state.round.crashPoint === null) return null;
-    return verifyFair(state.round.seed, state.round.salt, state.round.crashPoint);
-  }, [state?.round.crashPoint, state?.round.salt, state?.round.seed]);
+  const onCash = (id: string) => {
+    if (!token) return;
+    void runServerAction(`cash-${id}`, () => crashApi.cashOut(token, id));
+  };
+
+  const fair =
+    state?.round.seed && state.round.crash_point !== null
+      ? verifyFair(state.round.seed, state.round.salt, state.round.crash_point)
+      : null;
 
   const patchSlot = (slot: 0 | 1, patch: Partial<SlotDraft>) => {
-    setSlots((prev) => {
-      const next = [...prev] as [SlotDraft, SlotDraft];
+    setSlots((previous) => {
+      const next = [...previous] as [SlotDraft, SlotDraft];
       next[slot] = { ...next[slot], ...patch };
       return next;
     });
@@ -199,33 +278,49 @@ export function CrashArenaPage() {
       <header className="crash-hero">
         <div>
           <p className="crash-kicker">
-            <Flame size={16} aria-hidden="true" /> Sheriff Blast · سالن زنده
+            <Flame size={16} aria-hidden="true" /> Sheriff Blast · سالن جهانی سرور
           </p>
           <h1>انفجار شریف</h1>
           <p className="crash-lead">
-            ضریب از ۱.۰۰× اوج می‌گیرد. قبل از انفجار برداشت کن تا شرط در همان ضریب ضرب شود. سکه
-            مجازی است و نقد نمی‌شود.
+            همه بازیکنان یک راند جهانی را می‌بینند. قبل از انفجار برداشت کن؛ ثبت شرط، زمان و
+            تسویه کیف پول همگی روی سرور انجام می‌شوند.
           </p>
         </div>
         <aside className="crash-wallet" aria-label="کیف پول شریف‌کوین">
-          <span>موجودی</span>
+          <span>موجودی واقعی کیف پول</span>
           <strong>
-            <CoinAmount amount={state?.balance ?? profile?.coins ?? 0} size={22} />
+            <CoinAmount amount={balance} size={22} />
           </strong>
-          <small>شریف‌کوین · بدون برداشت نقدی</small>
+          <small>
+            {profileLoading ? "در حال اتصال…" : "شریف‌کوین مجازی · بدون برداشت نقدی"}
+          </small>
         </aside>
       </header>
 
       <div className="crash-banner" role="note">
         <ShieldAlert size={16} aria-hidden="true" />
-        ۱۸+ · RTP حدود {toFaDigits(100 - HOUSE_EDGE_BPS / 100)}٪ (لبهٔ خانه شفاف ۱٪) · بدون پول
-        واقعی · هر راند مستقل است
+        ۱۸+ · RTP نظری {toFaDigits(100 - HOUSE_EDGE_BPS / 100)}٪ · بدون پول واقعی · سقف باخت
+        روزانه {toFaDigits(state?.stats.daily_loss_cap ?? 300)} sh · هر راند مستقل است
       </div>
 
-      <ol className="crash-history" aria-label="تاریخچه ضرایب">
-        {[...(state?.round.history ?? [])].reverse().map((h, i) => (
-          <li key={`${h}-${i}`} className={h >= 200 ? "is-hot" : h < 130 ? "is-cold" : ""}>
-            {toFaDigits(formatMultiplier(h))}
+      {connectionError ? (
+        <div className="inline-warning" role="alert">
+          <RefreshCw size={16} aria-hidden="true" />
+          {connectionError} — بازی محلی یا موجودی ساختگی جایگزین نمی‌شود.
+        </div>
+      ) : (
+        <div className="crash-online" role="status">
+          <Wifi size={14} aria-hidden="true" /> سرور authoritative متصل · فقط بازیکنان واقعی
+        </div>
+      )}
+
+      <ol className="crash-history" aria-label="تاریخچه ضرایب سرور">
+        {(state?.history ?? []).map((row) => (
+          <li
+            key={row.index}
+            className={row.crash_point >= 200 ? "is-hot" : row.crash_point < 130 ? "is-cold" : ""}
+          >
+            {toFaDigits(formatMultiplier(row.crash_point))}
           </li>
         ))}
       </ol>
@@ -242,7 +337,7 @@ export function CrashArenaPage() {
             .join(" ")}
         >
           <div className="crash-stage__hud">
-            <span>راند {toFaDigits(state?.round.index ?? 1)}</span>
+            <span>راند سرور {toFaDigits(state?.round.index ?? 0)}</span>
             <em className={`crash-phase crash-phase--${phase}`}>{PHASE_LABEL[phase]}</em>
           </div>
           <div
@@ -256,7 +351,7 @@ export function CrashArenaPage() {
                 <small>شروع تا</small>
                 <strong>
                   {toFaDigits(
-                    Math.max(0, ((state?.round.bettingEndsAt ?? now) - now) / 1000).toFixed(1),
+                    Math.max(0, ((asMs(state?.round.betting_ends_at ?? null) ?? now) - now) / 1000).toFixed(1),
                   )}
                 </strong>
               </>
@@ -271,11 +366,15 @@ export function CrashArenaPage() {
           {phase === "flying" && myOpen.length > 0 ? (
             <div className="crash-cash-bar">
               {myOpen.map((bet) => (
-                <Button key={bet.id} type="button" size="lg" onClick={() => onCash(bet.id)}>
+                <Button
+                  key={bet.id}
+                  type="button"
+                  size="lg"
+                  loading={busyAction === `cash-${bet.id}`}
+                  onClick={() => onCash(bet.id)}
+                >
                   برداشت شرط {toFaDigits(bet.slot + 1)}
-                  {shown !== null
-                    ? ` · ${toFaDigits(payoutFor(bet.amount, shown))} sh`
-                    : ""}
+                  {shown !== null ? ` · ${toFaDigits(payoutFor(bet.amount, shown))} sh` : ""}
                 </Button>
               ))}
             </div>
@@ -285,14 +384,14 @@ export function CrashArenaPage() {
         <div className="crash-docks">
           {([0, 1] as const).map((slot) => {
             const draft = slots[slot];
-            const bet = state?.round.bets.find((b) => b.isMe && b.slot === slot);
-            const canBet = phase === "betting" && !bet;
+            const bet = state?.bets.find((candidate) => candidate.is_me && candidate.slot === slot);
+            const canBet = phase === "betting" && !bet && Boolean(token) && !connectionError;
             return (
               <div className="crash-dock" key={slot}>
                 <header>
                   <span>شرط {toFaDigits(slot + 1)}</span>
-                  {bet?.cashedAt !== null && bet ? (
-                    <em className="is-up">خروج {formatMultiplier(bet.cashedAt)}</em>
+                  {bet && bet.cashed_at !== null ? (
+                    <em className="is-up">خروج {formatMultiplier(bet.cashed_at)}</em>
                   ) : bet && phase === "crashed" ? (
                     <em className="is-down">باخت</em>
                   ) : bet ? (
@@ -303,29 +402,37 @@ export function CrashArenaPage() {
                   مبلغ
                   <input
                     type="number"
-                    min={MIN_BET}
-                    max={MAX_BET}
+                    min={minBet}
+                    max={maxBet}
                     dir="ltr"
                     value={draft.stake}
-                    onChange={(e) => patchSlot(slot, { stake: Number(e.target.value) })}
-                    onBlur={() => patchSlot(slot, { stake: clampStake(draft.stake) })}
+                    disabled={Boolean(bet)}
+                    onChange={(event) => patchSlot(slot, { stake: Number(event.target.value) })}
+                    onBlur={() => patchSlot(slot, { stake: clampStake(draft.stake, minBet, maxBet) })}
                   />
                 </label>
                 <div className="crash-chip-row">
-                  {[10, 20, 50, 100].map((n) => (
-                    <button type="button" key={n} onClick={() => patchSlot(slot, { stake: n })}>
-                      {toFaDigits(n)}
+                  {[10, 20, 50, 100].map((amount) => (
+                    <button
+                      type="button"
+                      key={amount}
+                      disabled={Boolean(bet)}
+                      onClick={() => patchSlot(slot, { stake: amount })}
+                    >
+                      {toFaDigits(amount)}
                     </button>
                   ))}
                   <button
                     type="button"
-                    onClick={() => patchSlot(slot, { stake: clampStake(Math.floor(draft.stake / 2)) })}
+                    disabled={Boolean(bet)}
+                    onClick={() => patchSlot(slot, { stake: clampStake(Math.floor(draft.stake / 2), minBet, maxBet) })}
                   >
                     ½
                   </button>
                   <button
                     type="button"
-                    onClick={() => patchSlot(slot, { stake: clampStake(draft.stake * 2) })}
+                    disabled={Boolean(bet)}
+                    onClick={() => patchSlot(slot, { stake: clampStake(draft.stake * 2, minBet, maxBet) })}
                   >
                     ۲×
                   </button>
@@ -334,25 +441,39 @@ export function CrashArenaPage() {
                   <input
                     type="checkbox"
                     checked={draft.autoOn}
-                    onChange={(e) => patchSlot(slot, { autoOn: e.target.checked })}
+                    disabled={Boolean(bet)}
+                    onChange={(event) => patchSlot(slot, { autoOn: event.target.checked })}
                   />
-                  خروج خودکار
+                  خروج خودکار سرور
                   <input
                     dir="ltr"
                     value={draft.auto}
-                    disabled={!draft.autoOn}
-                    onChange={(e) => patchSlot(slot, { auto: e.target.value })}
+                    disabled={!draft.autoOn || Boolean(bet)}
+                    onChange={(event) => patchSlot(slot, { auto: event.target.value })}
                     placeholder="2.00"
                   />
                 </label>
-                {bet && bet.cashedAt === null && phase === "flying" ? (
-                  <Button type="button" size="lg" fullWidth onClick={() => onCash(bet.id)}>
+                {bet && bet.cashed_at === null && phase === "flying" ? (
+                  <Button
+                    type="button"
+                    size="lg"
+                    fullWidth
+                    loading={busyAction === `cash-${bet.id}`}
+                    onClick={() => onCash(bet.id)}
+                  >
                     برداشت
                     {shown !== null ? ` ${toFaDigits(payoutFor(bet.amount, shown))}` : ""}
                   </Button>
                 ) : (
-                  <Button type="button" size="lg" fullWidth disabled={!canBet} onClick={() => onBet(slot)}>
-                    {bet ? "ثبت شد" : "ثبت شرط"}
+                  <Button
+                    type="button"
+                    size="lg"
+                    fullWidth
+                    disabled={!canBet}
+                    loading={busyAction === `bet-${slot}`}
+                    onClick={() => onBet(slot)}
+                  >
+                    {bet ? "روی سرور ثبت شد" : "ثبت شرط"}
                   </Button>
                 )}
               </div>
@@ -360,40 +481,36 @@ export function CrashArenaPage() {
           })}
           <dl className="crash-session">
             <div>
-              <dt>شرط نشست</dt>
-              <dd>
-                <CoinAmount amount={state?.sessionWagered ?? 0} size={14} />
-              </dd>
+              <dt>شرط امروز</dt>
+              <dd><CoinAmount amount={state?.stats.wagered_today ?? 0} size={14} /></dd>
             </div>
             <div>
-              <dt>سود / زیان</dt>
-              <dd className={(state?.sessionPnL ?? 0) >= 0 ? "is-up" : "is-down"}>
-                <CoinAmount amount={state?.sessionPnL ?? 0} signed size={14} />
+              <dt>سود / زیان امروز</dt>
+              <dd className={(state?.stats.pnl_today ?? 0) >= 0 ? "is-up" : "is-down"}>
+                <CoinAmount amount={state?.stats.pnl_today ?? 0} signed size={14} />
               </dd>
             </div>
           </dl>
         </div>
       </div>
 
-      <section className="crash-feed" aria-label="سالن زنده">
-        <h2>سالن زنده</h2>
-        {(state?.round.bets.length ?? 0) === 0 ? (
+      <section className="crash-feed" aria-label="شرط‌های واقعی سالن زنده">
+        <h2>سالن زنده · کاربران واقعی</h2>
+        {(state?.bets.length ?? 0) === 0 ? (
           <p className="crash-empty">هنوز شرطی در این راند نیست — پنجرهٔ شرط باز است.</p>
         ) : (
           <ul>
-            {(state?.round.bets ?? []).map((bet) => (
-              <li key={bet.id} className={bet.isMe ? "is-me" : ""}>
-                <span>{bet.name}{bet.isMe ? " (شما)" : ""}</span>
-                <span>
-                  <CoinAmount amount={bet.amount} size={12} />
-                </span>
+            {(state?.bets ?? []).map((bet) => (
+              <li key={bet.id} className={bet.is_me ? "is-me" : ""}>
+                <span>{bet.name}{bet.is_me ? " (شما)" : ""}</span>
+                <span><CoinAmount amount={bet.amount} size={12} /></span>
                 <strong>
-                  {bet.cashedAt !== null
-                    ? `خروج ${formatMultiplier(bet.cashedAt)} · +${toFaDigits(bet.payout)}`
+                  {bet.cashed_at !== null
+                    ? `خروج ${formatMultiplier(bet.cashed_at)} · +${toFaDigits(bet.payout)}`
                     : phase === "crashed"
                       ? "باخت"
-                      : bet.autoAt
-                        ? `خودکار ${formatMultiplier(bet.autoAt)}`
+                      : bet.auto_at
+                        ? `خودکار ${formatMultiplier(bet.auto_at)}`
                         : "در بازی"}
                 </strong>
               </li>
@@ -403,30 +520,21 @@ export function CrashArenaPage() {
       </section>
 
       <section className="crash-fair">
-        <button type="button" className="crash-fair__toggle" onClick={() => setFairOpen((v) => !v)}>
+        <button type="button" className="crash-fair__toggle" onClick={() => setFairOpen((open) => !open)}>
           <ShieldCheck size={16} aria-hidden="true" />
           تأیید منصفانه (Provably Fair)
         </button>
         {fairOpen && state ? (
           <div className="crash-fair__body">
             <p>
-              نقطهٔ انفجار قبل از قبول شرط با HMAC-SHA256 قفل می‌شود. بعد از راند، بذر فاش می‌شود تا
-              همان ضریب را روی دستگاه خودت حساب کنی.
+              بذر سرور قبل از شرط با SHA-256 قفل می‌شود. پس از انفجار، بذر فاش و همان نتیجه با
+              HMAC-SHA256 روی دستگاه شما دوباره محاسبه می‌شود.
             </p>
-            <p>
-              <span>تعهد (hash)</span>
-              <code dir="ltr">{state.round.seedHash}</code>
-            </p>
-            <p>
-              <span>salt</span>
-              <code dir="ltr">{state.round.salt}</code>
-            </p>
-            {state.round.seed && state.round.crashPoint !== null ? (
+            <p><span>تعهد (hash)</span><code dir="ltr">{state.round.seed_hash}</code></p>
+            <p><span>salt</span><code dir="ltr">{state.round.salt}</code></p>
+            {state.round.seed && state.round.crash_point !== null ? (
               <>
-                <p>
-                  <span>بذر فاش‌شده</span>
-                  <code dir="ltr">{state.round.seed}</code>
-                </p>
+                <p><span>بذر فاش‌شده</span><code dir="ltr">{state.round.seed}</code></p>
                 <p className={fair?.ok ? "is-up" : "is-down"}>
                   {fair?.ok
                     ? `تأیید شد — ضریب محاسبه‌شده ${formatMultiplier(fair.computed)}`

@@ -223,9 +223,11 @@ export class CrashSalon {
   private settleBet(bet: CrashBet, at: number): CrashBet {
     bet.cashedAt = at;
     bet.payout = payoutFor(bet.amount, at);
-    this.balance += bet.payout;
-    this.sessionPnL += bet.payout;
     if (bet.isMe) {
+      // Salon bots only make the public feed feel alive. Their payouts must
+      // never mutate the real player's local wallet or session P&L.
+      this.balance += bet.payout;
+      this.sessionPnL += bet.payout;
       this.telemetry.playerCashes += 1;
       this.telemetry.playerPaid += bet.payout;
       if (bet.payout - bet.amount > this.telemetry.biggestWin) {

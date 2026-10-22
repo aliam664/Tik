@@ -229,8 +229,21 @@ export interface AuditRow {
 
 export interface AdminCrashOps {
   ok: boolean;
-  source: string;
-  round: Record<string, unknown> | null;
+  source: "rpc";
+  server_now: string;
+  round: {
+    id: string;
+    index: number;
+    phase: "betting" | "flying" | "crashed";
+    seed_hash: string;
+    seed: string | null;
+    salt: string;
+    crash_point: number | null;
+    betting_ends_at: string;
+    flying_started_at: string | null;
+    crashed_at: string | null;
+    next_at: string | null;
+  } | null;
   kpis: {
     rounds_total: number;
     rounds_24h: number;
@@ -239,7 +252,17 @@ export interface AdminCrashOps {
     bets: number;
     cashed: number;
   };
-  recent: Record<string, unknown>[];
+  recent: {
+    index: number;
+    crash_point: number;
+    seed_hash: string;
+    salt: string;
+    seed: string | null;
+    phase: "betting" | "flying" | "crashed";
+    crashed_at: string | null;
+    volume: number;
+    paid: number;
+  }[];
 }
 
 export interface Paged<T> {

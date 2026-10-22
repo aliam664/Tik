@@ -2,14 +2,17 @@ import { lazy, type ComponentType, type LazyExoticComponent } from "react";
 import { getGameById, PLATFORM_GAMES } from "./registry";
 
 /**
- * Lazy lobby + room modules for every standalone title.
+ * Lazy route modules for every standalone title. Room-code games provide both
+ * Lobby and Room; solo or shared-salon games only provide Lobby.
  * Adding a game: register it in `registry.ts`, then add one row here.
  * Classic DOZ (`id: "doz"`, route `/`) is wired in the app router, not here.
  */
 export interface GameRouteModule {
   readonly id: string;
+  /** Entry page for every standalone game (lobby, arena, or solo screen). */
   readonly Lobby: LazyExoticComponent<ComponentType>;
-  readonly Room: LazyExoticComponent<ComponentType>;
+  /** Only room-code multiplayer games need a dedicated room page. */
+  readonly Room?: LazyExoticComponent<ComponentType>;
 }
 
 function lazyNamed<M extends Record<string, unknown>>(
@@ -63,7 +66,10 @@ export const GAME_ROUTE_MODULES: readonly GameRouteModule[] = [
   {
     id: "sheriff_blast",
     Lobby: lazyNamed(() => import("@/features/crash/CrashArenaPage"), "CrashArenaPage"),
-    Room: lazyNamed(() => import("@/features/crash/CrashArenaPage"), "CrashArenaPage"),
+  },
+  {
+    id: "sheriff_dice",
+    Lobby: lazyNamed(() => import("@/features/dice/DiceArenaPage"), "DiceArenaPage"),
   },
 ];
 

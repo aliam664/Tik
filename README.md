@@ -31,7 +31,7 @@
 
 ## معرفی پروژه
 
-- **صفحات:** خانه `/`، ساخت اتاق `/create`، ورود به اتاق `/join`، بازی `/room/:code`، بازی رقابتی `/play`، پروفایل `/profile`، رده‌بندی `/leaderboard`، فروشگاه `/shop`، قوانین `/rules`، حریم خصوصی `/privacy`، پنل مدیریت `/admin`
+- **صفحات:** خانه `/`، ساخت اتاق `/create`، ورود به اتاق `/join`، بازی `/room/:code`، بازی رقابتی `/play`، انفجار شریف `/games/blast`، تاس شریف `/games/dice`، پروفایل `/profile`، رده‌بندی `/leaderboard`، فروشگاه `/shop`، قوانین `/rules`، حریم خصوصی `/privacy`، پنل مدیریت `/admin`
 - **حالت‌های بازی:** دوستانه (کد اتاق، بدون سکه/رنک) · رده‌بندی‌شده (صف حریف، پاداش سکه + Elo) · شرطی (اسکرو ورودی + ریک ۱۰٪ + سقف باخت روزانه)
 - **جریان بازی:** میزبان اتاق می‌سازد → کد ۶ نویسه‌ای می‌گیرد → با «کپی لینک دعوت» دوستش را دعوت می‌کند → با ورود مهمان، بازی به‌صورت خودکار فعال می‌شود
 - **هویت بازیکن:** بعد از ورود، یک توکن تصادفی ۱۲۸بیتی فقط در `sessionStorage` مرورگر او ذخیره می‌شود؛ روی سرور فقط هش SHA-256 آن نگه‌داری می‌شود
@@ -98,7 +98,7 @@ VITE_SUPABASE_ANON_KEY=<anon یا publishable key>
 
 ## اجرای Migration ها
 
-فایل‌های `supabase/migrations/` به‌ترتیب شماره اجرا می‌شوند. دو راه:
+فایل‌های `supabase/migrations/` به‌ترتیب شماره اجرا می‌شوند (در حال حاضر `0001` تا `0023`). دو راه:
 
 **الف) با Supabase CLI:**
 
@@ -108,7 +108,7 @@ supabase db push
 ```
 
 **ب) دستی:** محتوای هر فایل را به‌ترتیب در **SQL Editor** داشبورد اجرا کنید
-(`0001_init_schema` → `0002_security_helpers` → `0003_player_rpcs` → `0004_admin_rpcs` → `0005_lockdown` → `0006_cron_cleanup` → `0007_profiles_economy` → `0008_player_economy_rpcs` → `0009_matchmaking` → `0010_settlement` → `0011_admin_pro` → `0012_lockdown_v2`).
+(`0001_init_schema` → ... → `0020_sheriff_blast` → `0021_sheriff_blast_hardening` → `0022_sheriff_blast_live_wallet` → `0023_sheriff_dice`). سه migration آخر، سالن انفجار را به کیف پول واقعی سرور متصل و بازی جدید «تاس شریف» را اضافه می‌کنند.
 
 ## تنظیم RLS
 

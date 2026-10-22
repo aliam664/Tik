@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { CrashSalon } from "./engine";
 import { isHash } from "./bytes";
 import {
+  BETTING_MS,
   HOUSE_EDGE_BPS,
   MIN_CRASH_POINT,
   crashPoint,
@@ -79,18 +80,36 @@ describe("CrashSalon local engine", () => {
   });
 
   it("burns the stake when the round busts before cash-out", () => {
-    const salon = new CrashSalon(200, 0);
+    let seed = randomSeed();
+    while (crashPoint(seed, "sheriff-blast:1") > 150) seed = randomSeed();
+    const point = crashPoint(seed, "sheriff-blast:1");
+    const salon = new CrashSalon(200, 0, seed);
     salon.placeBet(40, null, "آرش", 20);
-    const start = salon.getState(20).balance;
-    let later = salon.getState(20);
-    for (let t = 8_000; t <= 400_000 && salon.getTelemetry().rounds === 0; t += 20_000) {
-      later = salon.getState(t);
+    const afterStake = salon.getState(20).balance;
+    const later = salon.getState(BETTING_MS + elapsedAt(point) + 1);
+
+    expect(later.round.phase).toBe("crashed");
+    expect(later.balance).toBe(afterStake);
+    expect(salon.getTelemetry().rounds).toBe(1);
+  });
+
+  it("never credits simulated bot payouts to the player's wallet", () => {
+    let seed = randomSeed();
+    while (crashPoint(seed, "sheriff-blast:1") < 300) seed = randomSeed();
+    const random = vi.spyOn(Math, "random").mockReturnValue(0.1);
+
+    try {
+      const salon = new CrashSalon(200, 0, seed);
+      salon.placeBet(40, null, "آرش", 20);
+      const afterStake = salon.getState(20);
+      const withCashedBots = salon.getState(BETTING_MS + elapsedAt(200));
+
+      expect(withCashedBots.round.bets.some((bet) => bet.bot && bet.cashedAt !== null)).toBe(true);
+      expect(withCashedBots.balance).toBe(afterStake.balance);
+      expect(withCashedBots.sessionPnL).toBe(afterStake.sessionPnL);
+    } finally {
+      random.mockRestore();
     }
-    expect(["betting", "crashed", "flying"]).toContain(later.round.phase);
-    if (later.round.history.length > 0) {
-      expect(later.balance).toBeLessThanOrEqual(start + 500);
-    }
-    expect(salon.getTelemetry().rounds).toBeGreaterThan(0);
   });
 
   it("rejects NaN stakes and a second bet on the same slot", () => {

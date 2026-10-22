@@ -79,7 +79,20 @@ export type ServerErrorCode =
   | "INVALID_CODE_GUESS"
   | "ROUND_ALREADY_FINISHED"
   | "MAX_ATTEMPTS_REACHED"
-  | "WAITING_FOR_READY";
+  | "WAITING_FOR_READY"
+  | "BETTING_CLOSED"
+  | "MAX_SLOTS"
+  | "SLOT_TAKEN"
+  | "INVALID_SLOT"
+  | "INVALID_AUTO_CASHOUT"
+  | "NOT_FLYING"
+  | "BET_NOT_FOUND"
+  | "ALREADY_CASHED"
+  | "ALREADY_CRASHED"
+  | "BET_ALREADY_PLACED"
+  | "ROUND_CLOSED"
+  | "INVALID_DICE_TARGET"
+  | "INVALID_DICE_SIDE";
 
 export interface UserError {
   message: string;
@@ -178,6 +191,19 @@ export const ERROR_MESSAGES: Record<string, string> = {
   ROUND_ALREADY_FINISHED: "این راند به پایان رسیده و کد مخفی قبلاً کشف شده است.",
   MAX_ATTEMPTS_REACHED: "به سقف مجاز تلاش در این راند رسیده‌اید.",
   WAITING_FOR_READY: "هر دو بازیکن باید ابتدا آمادگی خود را در لابی تایید کنند.",
+  BETTING_CLOSED: "پنجره ثبت شرط این راند بسته شده است.",
+  MAX_SLOTS: "حداکثر دو شرط در هر راند انفجار مجاز است.",
+  SLOT_TAKEN: "این جایگاه شرط در راند جاری قبلاً استفاده شده است.",
+  INVALID_SLOT: "جایگاه شرط معتبر نیست.",
+  INVALID_AUTO_CASHOUT: "ضریب برداشت خودکار معتبر نیست.",
+  NOT_FLYING: "راند انفجار اکنون در فاز پرواز نیست.",
+  BET_NOT_FOUND: "شرط فعال برای این حساب پیدا نشد.",
+  ALREADY_CASHED: "این شرط قبلاً برداشت شده است.",
+  ALREADY_CRASHED: "راند پیش از ثبت برداشت منفجر شد.",
+  BET_ALREADY_PLACED: "برای این راند تاس قبلاً شرط ثبت کرده‌اید.",
+  ROUND_CLOSED: "پنجره شرط این راند بسته شده است؛ راند بعد را منتظر بمانید.",
+  INVALID_DICE_TARGET: "هدف تاس باید بین ۲٫۰۰ تا ۹۸٫۰۰ باشد.",
+  INVALID_DICE_SIDE: "جهت شرط تاس معتبر نیست.",
 };
 
 export const GENERIC_ERROR = "خطایی رخ داد. لطفاً دوباره تلاش کنید.";

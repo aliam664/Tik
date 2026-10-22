@@ -16,7 +16,8 @@ export type PlatformGameIcon =
   | "target"
   | "trophy"
   | "sparkles"
-  | "compass";
+  | "compass"
+  | "dice";
 
 export interface PlatformGame {
   /** Stable machine id, used in routes and telemetry. */
@@ -181,18 +182,42 @@ export const PLATFORM_GAMES: readonly PlatformGame[] = [
     players: "سالن زنده · همه با هم",
     genre: "ضریب / انفجار",
     frameRate: 60,
-    engine: "Canvas 2D · Provably Fair HMAC-SHA256",
+    engine: "Canvas 2D · Server-Authoritative · HMAC-SHA256",
     accent: "#e85d4c",
     icon: "flame",
     features: [
-      "دو شرط هم‌زمان + خروج خودکار",
+      "دو شرط هم‌زمان + خروج خودکار سرور",
       "RTP حدود ۹۹٪ — لبهٔ خانه شفاف ۱٪",
-      "تأیید منصفانه بعد از هر راند",
-      "فقط Sheriff Coin مجازی — نقد نمی‌شود",
+      "کیف پول واقعی شریف‌کوین + راستی‌آزمایی",
+      "فقط کاربران واقعی — بدون بات مخفی",
     ],
     navLabel: "انفجار",
     showInNav: true,
     navOrder: 0,
+  },
+  {
+    id: "sheriff_dice",
+    title: "تاس شریف",
+    titleEn: "SHERIFF DICE",
+    tagline: "راند جهانی تاس — هدف و جهت را انتخاب کن و نتیجه را خودت تأیید کن",
+    description:
+      "یک نتیجهٔ ۰٫۰۰ تا ۹۹٫۹۹ برای همه سالن تولید می‌شود. پیش از پایان شمارش روی کمتر یا بیشتر بودن نتیجه شرط می‌بندید؛ ضریب از شانس انتخابی با RTP نظری ۹۹٪ محاسبه و بذر سرور پس از راند فاش می‌شود.",
+    status: "live",
+    route: "/games/dice",
+    players: "سالن زنده · نتیجه مشترک",
+    genre: "تاس / احتمال",
+    engine: "Server-Authoritative · Provably Fair HMAC-SHA256",
+    accent: "#8b5cf6",
+    icon: "dice",
+    features: [
+      "انتخاب Under / Over و شانس ۲٪ تا ۹۸٪",
+      "تسویه اتمیک کیف پول شریف‌کوین",
+      "تعهد و افشای بذر هر راند",
+      "سقف باخت روزانه و آمار شفاف",
+    ],
+    navLabel: "تاس",
+    showInNav: true,
+    navOrder: 0.5,
   },
 ] as const;
 

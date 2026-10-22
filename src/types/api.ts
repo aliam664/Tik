@@ -7,4 +7,6 @@ export * from "./admin";
 export * from "./lastNight";
 export * from "./wordGame";
 export * from "./codeBreaker";
+export * from "./crash";
+export * from "./dice";
 

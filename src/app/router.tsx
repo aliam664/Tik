@@ -69,7 +69,7 @@ export function AppRouter() {
             return (
               <Fragment key={mod.id}>
                 <Route path={game.route} element={<mod.Lobby />} />
-                {game.roomRoutePrefix ? (
+                {game.roomRoutePrefix && mod.Room ? (
                   <Route path={`${game.roomRoutePrefix}/:roomCode`} element={<mod.Room />} />
                 ) : null}
                 {(game.routeAliases ?? []).map((alias) => (

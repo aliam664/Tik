@@ -124,7 +124,13 @@ export function AdminPlayersPanel({
   const [busy, setBusy] = useState(false);
   const selectedRef = useRef<string | null>(null);
   const detailReqRef = useRef(0);
-  selectedRef.current = selected;
+
+  const closeDetail = () => {
+    detailReqRef.current += 1;
+    selectedRef.current = null;
+    setSelected(null);
+    setDetail(null);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -454,14 +460,9 @@ export function AdminPlayersPanel({
         wide
         open={selected !== null}
         title={`پرونده عملیاتی: ${(profileObj?.display_name as string) ?? "بازیکن"}`}
-        onClose={() => {
-          detailReqRef.current += 1;
-          selectedRef.current = null;
-          setSelected(null);
-          setDetail(null);
-        }}
+        onClose={closeDetail}
         footer={
-          <Button variant="secondary" onClick={() => setSelected(null)}>
+          <Button variant="secondary" onClick={closeDetail}>
             بستن پرونده
           </Button>
         }

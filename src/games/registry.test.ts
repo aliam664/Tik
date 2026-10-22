@@ -39,9 +39,9 @@ describe("platform game registry", () => {
     expect(new Set(moduleIds).size).toBe(moduleIds.length);
     for (const game of getStandaloneGames()) {
       expect(moduleIds).toContain(game.id);
-      if (game.id !== "sheriff_blast") {
-        expect(game.roomRoutePrefix?.length).toBeGreaterThan(0);
-      }
+      const mod = GAME_ROUTE_MODULES.find((candidate) => candidate.id === game.id);
+      if (game.roomRoutePrefix) expect(mod?.Room).toBeDefined();
+      else expect(mod?.Room).toBeUndefined();
     }
   });
 
@@ -50,7 +50,7 @@ describe("platform game registry", () => {
     const adapterIds = ROOM_JOIN_ADAPTERS.map((a) => a.id);
     expect(new Set(adapterIds).size).toBe(adapterIds.length);
     for (const game of getActiveGames()) {
-      if (game.id === "sheriff_blast") continue;
+      if (!game.roomRoutePrefix) continue;
       expect(adapterIds).toContain(game.id);
     }
   });
@@ -60,6 +60,7 @@ describe("platform game registry", () => {
     expect(nav.every((item) => item.path !== "/")).toBe(true);
     expect(nav.map((item) => item.path)).toEqual([
       "/games/blast",
+      "/games/dice",
       "/games/code-breaker",
       "/games/word-cipher",
       "/games/last-night",
