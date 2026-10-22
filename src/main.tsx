@@ -7,6 +7,8 @@ import "./styles/animations.css";
 import "./styles/components.css";
 import "./styles/pages.css";
 import "./styles/economy.css";
+import "./styles/word-game.css";
+import "./styles/code-breaker.css";
 
 const rootEl = document.getElementById("root");
 if (!rootEl) {

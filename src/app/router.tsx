@@ -46,6 +46,26 @@ const LastNightRoomPage = lazy(() =>
     default: m.LastNightRoomPage,
   })),
 );
+const WordCipherLobbyPage = lazy(() =>
+  import("@/features/wordGame/WordCipherLobbyPage").then((m) => ({
+    default: m.WordCipherLobbyPage,
+  })),
+);
+const WordCipherRoomPage = lazy(() =>
+  import("@/features/wordGame/WordCipherRoomPage").then((m) => ({
+    default: m.WordCipherRoomPage,
+  })),
+);
+const CodeBreakerLobbyPage = lazy(() =>
+  import("@/features/codeBreaker/CodeBreakerLobbyPage").then((m) => ({
+    default: m.CodeBreakerLobbyPage,
+  })),
+);
+const CodeBreakerRoomPage = lazy(() =>
+  import("@/features/codeBreaker/CodeBreakerRoomPage").then((m) => ({
+    default: m.CodeBreakerRoomPage,
+  })),
+);
 
 function RouteFallback() {
   return (
@@ -74,6 +94,10 @@ export function AppRouter() {
           <Route path="/games/last-night" element={<LastNightLobbyPage />} />
           <Route path="/games/last-night/room/:roomCode" element={<LastNightRoomPage />} />
           <Route path="/games/arena2d" element={<LastNightLobbyPage />} />
+          <Route path="/games/word-cipher" element={<WordCipherLobbyPage />} />
+          <Route path="/games/word-cipher/room/:roomCode" element={<WordCipherRoomPage />} />
+          <Route path="/games/code-breaker" element={<CodeBreakerLobbyPage />} />
+          <Route path="/games/code-breaker/room/:roomCode" element={<CodeBreakerRoomPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

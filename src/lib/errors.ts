@@ -69,7 +69,17 @@ export type ServerErrorCode =
   | "WAVE_NOT_COMPLETE"
   | "INVALID_BOSS"
   | "INVALID_LOADOUT"
-  | "ADMIN_PROFILE_SETUP_REQUIRED";
+  | "ADMIN_PROFILE_SETUP_REQUIRED"
+  | "CLUE_EMPTY"
+  | "CLUE_TOO_LONG"
+  | "CLUE_CONTAINS_TARGET"
+  | "MAX_CLUES_REACHED"
+  | "INVALID_GUESS"
+  | "DUPLICATE_GUESS"
+  | "INVALID_CODE_GUESS"
+  | "ROUND_ALREADY_FINISHED"
+  | "MAX_ATTEMPTS_REACHED"
+  | "WAITING_FOR_READY";
 
 export interface UserError {
   message: string;
@@ -158,6 +168,16 @@ export const ERROR_MESSAGES: Record<string, string> = {
   WAVE_NOT_COMPLETE: "موج هنوز به حداقل زمان نبرد نرسیده است؛ چند لحظه دیگر ادامه دهید.",
   INVALID_BOSS: "شناسه غول این موج معتبر نیست.",
   INVALID_LOADOUT: "ترکیب تجهیزات انتخاب‌شده معتبر نیست.",
+  CLUE_EMPTY: "متن سرنخ باید حداقل ۲ کاراکتر باشد.",
+  CLUE_TOO_LONG: "متن سرنخ نباید بیشتر از ۶۰ کاراکتر باشد.",
+  CLUE_CONTAINS_TARGET: "نمی‌توانید خودِ کلمه هدف یا معادل مستقیم آن را داخل سرنخ بنویسید!",
+  MAX_CLUES_REACHED: "حداکثر تعداد سرنخ و راهنمایی مجاز این راند استفاده شده است.",
+  INVALID_GUESS: "لطفاً یک واژه معتبر برای حدس وارد کنید.",
+  DUPLICATE_GUESS: "این حدس را قبلاً در همین راند ثبت کرده‌اید؛ واژه یا کد جدیدی امتحان کنید.",
+  INVALID_CODE_GUESS: "کد ورودی باید دقیقاً ۴ رقم عددی (۰ تا ۹) باشد؛ مثلاً 0072 یا 9090.",
+  ROUND_ALREADY_FINISHED: "این راند به پایان رسیده و کد مخفی قبلاً کشف شده است.",
+  MAX_ATTEMPTS_REACHED: "به سقف مجاز تلاش در این راند رسیده‌اید.",
+  WAITING_FOR_READY: "هر دو بازیکن باید ابتدا آمادگی خود را در لابی تایید کنند.",
 };
 
 export const GENERIC_ERROR = "خطایی رخ داد. لطفاً دوباره تلاش کنید.";

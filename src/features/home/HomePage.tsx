@@ -2,13 +2,20 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
+  Compass,
+  Crown,
+  Flame,
   Gamepad2,
   Grid3X3,
   LogIn,
   Plus,
   Rocket,
+  Shield,
   ShieldCheck,
+  Sparkles,
   Swords,
+  Target,
+  Trophy,
   Users,
   Zap,
 } from "lucide-react";
@@ -22,9 +29,36 @@ import { toFaDigits } from "@/lib/format";
 import {
   DESIGNER_CREDIT,
   PLATFORM_GAMES,
+  type PlatformGameIcon,
   getActiveGames,
+  getStandaloneGames,
 } from "@/games/registry";
 import type { PublicStatus } from "@/types/room";
+
+function renderGameIcon(icon: PlatformGameIcon, size = 22) {
+  switch (icon) {
+    case "grid":
+      return <Gamepad2 size={size} aria-hidden="true" />;
+    case "rocket":
+      return <Rocket size={size} aria-hidden="true" />;
+    case "swords":
+      return <Swords size={size} aria-hidden="true" />;
+    case "crown":
+      return <Crown size={size} aria-hidden="true" />;
+    case "flame":
+      return <Flame size={size} aria-hidden="true" />;
+    case "shield":
+      return <Shield size={size} aria-hidden="true" />;
+    case "target":
+      return <Target size={size} aria-hidden="true" />;
+    case "trophy":
+      return <Trophy size={size} aria-hidden="true" />;
+    case "sparkles":
+      return <Sparkles size={size} aria-hidden="true" />;
+    case "compass":
+      return <Compass size={size} aria-hidden="true" />;
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /* Static content                                                      */
@@ -202,14 +236,17 @@ export function HomePage() {
             >
               بازی رقابتی و شرط
             </Button>
-            <Button
-              size="lg"
-              variant="secondary"
-              icon={<Rocket size={18} aria-hidden="true" />}
-              onClick={() => navigate("/games/last-night")}
-            >
-              Last Night — بقای قرون‌وسطایی
-            </Button>
+            {getStandaloneGames().map((game) => (
+              <Button
+                key={game.id}
+                size="lg"
+                variant="secondary"
+                icon={renderGameIcon(game.icon, 18)}
+                onClick={() => navigate(game.route)}
+              >
+                {game.ctaLabel ?? game.title}
+              </Button>
+            ))}
           </div>
 
           <div className="hero__status" aria-live="polite">
@@ -231,7 +268,9 @@ export function HomePage() {
               <div>
                 <h2 className="note-card__title">شریف‌کوین (Sheriff Coin) و اقتصاد یکپارچه</h2>
                 <p className="note-card__text">
-                  در بخش <Link className="link" to="/play">دوز رقابتی</Link> و کمپین{" "}
+                  در بخش <Link className="link" to="/play">دوز رقابتی</Link>،{" "}
+                  <Link className="link" to="/games/code-breaker">رمزگشا (کد ۴ رقمی)</Link>،{" "}
+                  <Link className="link" to="/games/word-cipher">رازواژه</Link> و کمپین{" "}
                   <Link className="link" to="/games/last-night">Last Night — Medieval Survival</Link>{" "}
                   بازی کن و <strong>Sheriff Coin</strong> جمع کن.{" "}
                   <Link className="link" to="/leaderboard">جدول رده‌بندی</Link> و{" "}
@@ -315,12 +354,31 @@ export function HomePage() {
       <section className="game-hub" aria-label="کاتالوگ بازی‌ها">
         {PLATFORM_GAMES.map((game) => (
           <article className="game-card" key={game.id} style={{ "--game-accent": game.accent } as React.CSSProperties}>
+            {game.bannerUrl ? (
+              <div
+                style={{
+                  borderRadius: 10,
+                  overflow: "hidden",
+                  border: `1px solid ${game.accent}40`,
+                  aspectRatio: "16 / 9",
+                  marginBottom: 8,
+                  background: "var(--bg-0)",
+                }}
+              >
+                <img
+                  src={game.bannerUrl}
+                  alt={game.title}
+                  loading="lazy"
+                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                />
+              </div>
+            ) : null}
             <div className="game-card__top">
               <span className="game-card__icon" style={{ color: game.accent, borderColor: `${game.accent}66`, background: `${game.accent}14` }}>
-                {game.icon === "grid" ? <Gamepad2 size={22} aria-hidden="true" /> : <Rocket size={22} aria-hidden="true" />}
+                {renderGameIcon(game.icon, 22)}
               </span>
               <span className={`game-card__tag ${game.status === "live" ? "game-card__tag--live" : "game-card__tag--soon"}`}>
-                {game.status === "live" ? "فعال" : "به‌زودی"}
+                {game.status === "live" ? "فعال" : game.status === "beta" ? "بتا" : "به‌زودی"}
               </span>
             </div>
             <h3 className="game-card__title">
@@ -336,10 +394,13 @@ export function HomePage() {
               <span className="game-card__spec">{game.genre}</span>
               {game.frameRate ? <span className="game-card__spec">{toFaDigits(game.frameRate)} FPS</span> : null}
               {game.engine ? <span className="game-card__spec">{game.engine}</span> : null}
+              {game.features.map((feat) => (
+                <span className="game-card__spec" key={feat}>{feat}</span>
+              ))}
             </div>
-            {game.status === "live" ? (
+            {game.status === "live" || game.status === "beta" ? (
               <Link className="btn btn--secondary btn--sm" to={game.route} style={{ alignSelf: "flex-start" }}>
-                بازی کن
+                {game.ctaLabel ?? "بازی کن"}
                 <ArrowLeft size={14} aria-hidden="true" />
               </Link>
             ) : (
