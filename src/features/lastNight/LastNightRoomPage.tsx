@@ -7,7 +7,7 @@ import {
   getMapSpec,
   getShopItemSpec,
   getWeaponSpec,
-  SHERIFF_COIN_NAME,
+  RUN_COIN_NAME,
   WORLD_HEIGHT,
   WORLD_WIDTH,
 } from "@/games/lastNight/catalog";
@@ -756,7 +756,7 @@ export function LastNightRoomPage() {
           id: `combat_reward_${request.requestId}`,
           x: sim.localX,
           y: sim.localY - 24,
-          text: `+${creditedCoins} ${SHERIFF_COIN_NAME}`,
+          text: `+${creditedCoins} ${RUN_COIN_NAME}`,
           color: "#facc15",
           ttlSec: 1.6,
         });
@@ -1224,7 +1224,7 @@ export function LastNightRoomPage() {
         x: target.x,
         y: target.y - 20,
         text: earnedCoins > 0
-          ? `+${earnedCoins} ${SHERIFF_COIN_NAME}`
+          ? `+${earnedCoins} ${RUN_COIN_NAME}`
           : res.interaction_recorded
             ? "پیشرفت هدف ثبت شد"
             : "این شیء قبلاً فعال شده است",

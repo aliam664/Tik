@@ -4,6 +4,7 @@ import {
   getMagicBookSpec,
   getWeaponSpec,
   MAX_EQUIPPED_SPELLBOOKS,
+  RUN_COIN_NAME,
   SHERIFF_COIN_NAME,
   WORLD_HEIGHT,
   WORLD_WIDTH,
@@ -164,14 +165,14 @@ export function LastNightRoomHud({
         <div className="ln-top-bar__right">
           <div
             className="ln-sheriff-wallet"
-            title={`خزانه مشترک تیم (${SHERIFF_COIN_NAME})`}
+            title={`خزانه مشترک تیم (${RUN_COIN_NAME})`}
           >
             <span className="ln-coin-icon">🪙</span>
             <div>
-              <small>خزانه تیم ({SHERIFF_COIN_NAME})</small>
+              <small>خزانه تیم ({RUN_COIN_NAME})</small>
               <strong>
                 {(state?.sheriff_coins ?? 0).toLocaleString("en-US")}{" "}
-                {SHERIFF_COIN_NAME}
+                {RUN_COIN_NAME}
               </strong>
             </div>
           </div>
@@ -236,7 +237,7 @@ export function LastNightRoomHud({
             <h3>پیوستن به اتاق دونفره آنلاین ({normalizedCode})</h3>
             <p>
               شوالیه دوم می‌تواند از دستگاه مجزا وارد این کمپین ۱۰ موجی شود و در خزانه{" "}
-              <strong>{SHERIFF_COIN_NAME}</strong> شریک گردد.
+              <strong>{RUN_COIN_NAME}</strong> شریک گردد.
             </p>
           </div>
           <div className="ln-join-prompt-actions">
@@ -362,7 +363,7 @@ export function LastNightRoomHud({
                   <p className="ln-overlay-hint">
                     می‌توانید کد اتاق <code>{normalizedCode}</code> را برای بازیکن دوم در
                     دستگاه دیگر بفرستید، از فروشگاه با{" "}
-                    <strong>{SHERIFF_COIN_NAME}</strong> خرید کنید و موج{" "}
+                    <strong>{RUN_COIN_NAME}</strong> خرید کنید و موج{" "}
                     {state?.wave ?? 1} را آغاز نمایید.
                   </p>
                   {me && (
@@ -380,7 +381,7 @@ export function LastNightRoomHud({
                         className="btn btn--secondary"
                         onClick={() => setShopOpen(true)}
                       >
-                        ⚒️ فروشگاه و تجهیز جادو ({SHERIFF_COIN_NAME})
+                        ⚒️ فروشگاه و تجهیز جادو ({RUN_COIN_NAME})
                       </button>
                     </div>
                   )}
@@ -403,7 +404,7 @@ export function LastNightRoomHud({
                   </h3>
                   <p>
                     موج نهایی: <strong>{state.wave} از 10</strong> | کل{" "}
-                    <strong>{SHERIFF_COIN_NAME}</strong> کسب‌شده:{" "}
+                    <strong>{RUN_COIN_NAME}</strong> کسب‌شده:{" "}
                     <strong>{state.total_coins_earned.toLocaleString("en-US")}</strong>
                   </p>
                   <div className="ln-results-table">
@@ -769,7 +770,7 @@ export function LastNightRoomHud({
                     {obj.completed ? "✓" : "○"} {obj.title} ({obj.progress}/{obj.target})
                   </span>
                   <strong className="ln-obj-reward">
-                    +{obj.reward_coins} {SHERIFF_COIN_NAME}
+                    +{obj.reward_coins} {RUN_COIN_NAME}
                   </strong>
                 </li>
               ))}

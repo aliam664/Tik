@@ -29,6 +29,7 @@ export type ServerErrorCode =
   | "REMATCH_NOT_ALLOWED"
   | "INSUFFICIENT_FUNDS"
   | "ITEM_OWNED"
+  | "ITEM_NOT_OWNED"
   | "ITEM_NOT_FOUND"
   | "STAKES_REQUIRE_GAMES"
   | "STAKES_REQUIRE_TIER"
@@ -141,6 +142,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
   CODE_GENERATION_FAILED: "خطا در ساخت اتاق. دوباره تلاش کنید.",
   INSUFFICIENT_FUNDS: "موجودی شریف‌کوین کافی نیست.",
   ITEM_OWNED: "این آیتم را قبلاً خریده‌اید.",
+  ITEM_NOT_OWNED: "ابتدا این آیتم را بخرید.",
   ITEM_NOT_FOUND: "آیتم در دسترس نیست.",
   STAKES_REQUIRE_GAMES: "برای بازی شرطی باید ابتدا حداقل ۲۰ بازی رنکد انجام دهید.",
   STAKES_REQUIRE_TIER: "برای بازی شرطی باید به تیر نقره یا بالاتر برسید.",

@@ -14,8 +14,8 @@ export const HOUSE_EDGE_BPS = 100;
 export const GROWTH_RATE_PER_SECOND = 0.06;
 export const BETTING_MS = 5000;
 export const CRASHED_MS = 2800;
-export const MIN_BET = 10;
-export const MAX_BET = 500;
+export const MIN_BET = 100;
+export const MAX_BET = 300;
 export const SALT_PREFIX = "sheriff-blast";
 export const MAX_SLOTS = 2;
 

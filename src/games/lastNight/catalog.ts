@@ -3,11 +3,12 @@
  * Authoritative client-side catalog mirroring the PostgreSQL server rules.
  *
  * Art Direction: 2D Top-Down Pixel Art · Dark Medieval Survival & Dark Fantasy.
- * Currency: "Sheriff Coin" (used everywhere across HUD, shops, rewards, tooltips, and results).
+ * Currency boundary: temporary Run Coin inside a campaign; Sheriff Coin only for persistent rewards.
  */
 
 import {
   CURRENCY_NAME,
+  RUN_COIN_NAME,
   SHERIFF_COIN_NAME,
   type BossSpec,
   type EnemySpec,
@@ -22,7 +23,7 @@ import {
   type WeaponSpec,
 } from "@/types/lastNight";
 
-export { CURRENCY_NAME, SHERIFF_COIN_NAME };
+export { CURRENCY_NAME, RUN_COIN_NAME, SHERIFF_COIN_NAME };
 
 /** Maximum spellbooks a player can equip simultaneously. */
 export const MAX_EQUIPPED_SPELLBOOKS = 2;

@@ -14,6 +14,7 @@ import {
   MEDIEVAL_MAPS,
   MEDIEVAL_SHOP_ITEMS,
   MEDIEVAL_WEAPONS,
+  RUN_COIN_NAME,
   SHERIFF_COIN_NAME,
   WORLD_HEIGHT,
   WORLD_WIDTH,
@@ -33,8 +34,9 @@ import {
 } from "./simulation";
 
 describe("Last Night — Medieval Survival Catalog & Economy", () => {
-  it("uses the exact currency name 'Sheriff Coin'", () => {
+  it("separates persistent Sheriff Coin from temporary campaign Run Coin", () => {
     expect(SHERIFF_COIN_NAME).toBe("Sheriff Coin");
+    expect(RUN_COIN_NAME).toBe("Run Coin");
   });
 
   it("registers both Doz Classic and Last Night — Medieval Survival as live platform games", () => {

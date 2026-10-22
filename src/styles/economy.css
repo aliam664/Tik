@@ -1675,3 +1675,70 @@
   }
 }
 
+
+/* Sheriff Coin economy v2: equipped cosmetics + transparent daily faucet cap. */
+.shop-item--equipped {
+  border-color: color-mix(in srgb, #39c98a 72%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #39c98a 34%, transparent);
+}
+
+.profile-head--rare,
+.profile-head--epic,
+.profile-head--legendary {
+  position: relative;
+  overflow: hidden;
+}
+
+.profile-head--rare { border-color: color-mix(in srgb, #52a7ff 65%, var(--border)); }
+.profile-head--epic { border-color: color-mix(in srgb, #b879ff 70%, var(--border)); }
+.profile-head--legendary {
+  border-color: color-mix(in srgb, #f3be58 82%, var(--border));
+  box-shadow: 0 0 30px color-mix(in srgb, #f3be58 14%, transparent);
+}
+
+.profile-equipped-title {
+  display: inline-flex;
+  width: fit-content;
+  color: #f3be58;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.daily-earnings-card { display: grid; gap: 0.7rem; }
+.daily-earnings-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.daily-earnings-progress {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-3) 86%, transparent);
+}
+.daily-earnings-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #39c98a, #f3be58);
+}
+.daily-earnings-card > small { color: var(--text-3); }
+
+.profile-inventory {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.65rem;
+  margin: 0.8rem 0;
+}
+.profile-inventory > div {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.profile-inventory > div.is-equipped { border-color: color-mix(in srgb, #39c98a 65%, var(--border)); }
+.profile-inventory span { color: var(--text-3); font-size: 0.78rem; }
+.profile-inventory .is-equipped span { color: #39c98a; }

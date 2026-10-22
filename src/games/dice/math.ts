@@ -9,6 +9,8 @@ export const DICE_MAX_TARGET = 9800;
 export const DICE_HOUSE_EDGE_BPS = 100;
 export const DICE_BETTING_MS = 8000;
 export const DICE_REVEAL_MS = 3500;
+export const DICE_MIN_BET = 100;
+export const DICE_MAX_BET = 300;
 
 const TWO_POW_52 = 2n ** 52n;
 
@@ -34,6 +36,12 @@ export function diceMultiplier(target: number, side: DiceSide): number {
 
 export function dicePayout(stake: number, multiplier: number): number {
   return Math.floor((stake * multiplier) / 100);
+}
+
+/** Actual long-run RTP after both multiplier and integer-coin payout flooring. */
+export function diceEffectiveRtp(stake: number, target: number, side: DiceSide): number {
+  const chance = diceChanceBps(target, side) / 10_000;
+  return (chance * dicePayout(stake, diceMultiplier(target, side))) / stake;
 }
 
 export function isDiceWin(roll: number, target: number, side: DiceSide): boolean {

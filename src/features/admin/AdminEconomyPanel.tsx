@@ -43,6 +43,27 @@ const REASON_LABELS: Record<string, string> = {
   admin_clawback: "کسر توسط مدیر",
   admin_grant: "اعطای مدیر",
   admin_deduct: "کسر مدیر",
+  crash_bet: "ورودی انفجار شریف",
+  crash_payout: "پرداخت انفجار شریف",
+  dice_bet: "ورودی تاس شریف",
+  dice_payout: "پرداخت تاس شریف",
+};
+
+const SOURCE_LABELS: Record<string, string> = {
+  onboarding: "شروع حساب",
+  classic_ranked: "دوز رده‌بندی",
+  classic_stakes: "دوز شرطی",
+  word_cipher: "رازواژه",
+  code_breaker: "رمزگشا",
+  last_night: "آخرین شب",
+  sheriff_blast: "انفجار شریف",
+  sheriff_dice: "تاس شریف",
+  achievement: "دستاوردها",
+  season: "فصل‌ها",
+  shop: "فروشگاه",
+  live_ops: "رویدادها",
+  admin: "مدیریت",
+  platform: "پلتفرم",
 };
 
 export function AdminEconomyPanel({
@@ -167,6 +188,8 @@ export function AdminEconomyPanel({
   const config = (data.config as Record<string, unknown>[]) ?? [];
   const history = (data.config_history as Record<string, unknown>[]) ?? [];
   const byReason = (data.by_reason as Record<string, unknown>[]) ?? [];
+  const bySource = (data.by_source as Record<string, unknown>[]) ?? [];
+  const rewardCap = (data.reward_cap_7d as Record<string, unknown>) ?? {};
   const topHolders = (data.top_holders as Record<string, unknown>[]) ?? [];
   const snapshots = (data.snapshots as Record<string, unknown>[]) ?? [];
 
@@ -220,6 +243,14 @@ export function AdminEconomyPanel({
             <strong className="ltr">{toFaDigits(String(data.velocity_24h))}x</strong>
             <span>سرعت گردش (Velocity)</span>
           </div>
+          <div className="econ-metric">
+            <CoinAmount amount={Number(data.transfer_net_24h ?? 0)} signed size={20} />
+            <span>خالص انتقال شرط‌ها (شامل Hold باز)</span>
+          </div>
+          <div className="econ-metric">
+            <strong className="ltr">{toFaDigits((Number(data.sink_coverage_7d ?? 0) * 100).toFixed(1))}٪</strong>
+            <span>پوشش Faucet با Sink در ۷ روز</span>
+          </div>
         </div>
 
         <div className="charts-grid-2">
@@ -266,6 +297,37 @@ export function AdminEconomyPanel({
                   <CoinAmount amount={Number(h.balance)} size={14} />
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="econ-columns">
+          <div>
+            <h3>تمرکز Faucet/Sink بر اساس بازی (۷ روز)</h3>
+            <div className="admin-mini-list">
+              {bySource.length === 0 ? <span className="muted">هنوز جریان اقتصادی ثبت نشده است.</span> : null}
+              {bySource.map((row, i) => (
+                <div key={i} className="admin-mini-row">
+                  <span>{SOURCE_LABELS[String(row.source)] ?? String(row.source)}</span>
+                  <span className="ltr">+{toFaDigits(Number(row.faucet ?? 0))} / −{toFaDigits(Number(row.sink ?? 0))}</span>
+                  <CoinAmount amount={Number(row.net ?? 0)} signed size={14} />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h3>فشار سقف پاداش گیم‌پلی (۷ روز)</h3>
+            <div className="admin-mini-list">
+              <div className="admin-mini-row">
+                <span>درخواست / پرداخت</span>
+                <span className="ltr">{toFaDigits(Number(rewardCap.claims ?? 0))} ادعا</span>
+                <span className="ltr">{toFaDigits(Number(rewardCap.requested ?? 0))} / {toFaDigits(Number(rewardCap.granted ?? 0))}</span>
+              </div>
+              <div className="admin-mini-row">
+                <span>مسدودشده توسط سقف</span>
+                <span>{toFaDigits(Number(rewardCap.players_capped ?? 0))} بازیکن</span>
+                <CoinAmount amount={Number(rewardCap.blocked ?? 0)} size={14} />
+              </div>
             </div>
           </div>
         </div>

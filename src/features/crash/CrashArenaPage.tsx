@@ -117,8 +117,8 @@ export function CrashArenaPage() {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<BusyAction>(null);
   const [slots, setSlots] = useState<[SlotDraft, SlotDraft]>([
-    { stake: 20, autoOn: false, auto: "2.00" },
-    { stake: 20, autoOn: false, auto: "5.00" },
+    { stake: MIN_BET, autoOn: false, auto: "2.00" },
+    { stake: MIN_BET, autoOn: false, auto: "5.00" },
   ]);
 
   const acceptState = (next: CrashServerState) => {
@@ -299,7 +299,7 @@ export function CrashArenaPage() {
 
       <div className="crash-banner" role="note">
         <ShieldAlert size={16} aria-hidden="true" />
-        ۱۸+ · RTP نظری {toFaDigits(100 - HOUSE_EDGE_BPS / 100)}٪ · بدون پول واقعی · سقف باخت
+        ۱۸+ · RTP پایه {toFaDigits(100 - HOUSE_EDGE_BPS / 100)}٪ (بلندمدت) · پرداخت با حداقل ۱۰۰ سکه دقیق تا صدم ضریب · بدون پول واقعی · سقف باخت
         روزانه {toFaDigits(state?.stats.daily_loss_cap ?? 300)} sh · هر راند مستقل است
       </div>
 
@@ -412,7 +412,7 @@ export function CrashArenaPage() {
                   />
                 </label>
                 <div className="crash-chip-row">
-                  {[10, 20, 50, 100].map((amount) => (
+                  {[100, 150, 200, 300].map((amount) => (
                     <button
                       type="button"
                       key={amount}

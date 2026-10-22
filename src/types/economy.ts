@@ -80,6 +80,26 @@ export interface LedgerRow {
   created_at: string;
 }
 
+export interface InventoryItem extends ShopItem {
+  acquired_at: string;
+  equipped: boolean;
+}
+
+export interface EquippedCosmetic {
+  id: string;
+  sku: string;
+  name: string;
+  kind: string;
+  rarity: string;
+}
+
+export interface DailyGameplayProgress {
+  earned: number;
+  cap: number;
+  remaining: number;
+  resets_at: string;
+}
+
 export interface AchievementRow {
   code: string;
   title: string;
@@ -93,6 +113,9 @@ export interface MyProfileResponse {
   recent_matches: ProfileMatchRow[];
   recent_ledger: LedgerRow[];
   achievements: AchievementRow[];
+  inventory: InventoryItem[];
+  equipped: Record<string, EquippedCosmetic>;
+  daily_gameplay: DailyGameplayProgress;
 }
 
 export interface LeaderboardRow {

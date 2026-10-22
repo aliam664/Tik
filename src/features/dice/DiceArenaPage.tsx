@@ -4,9 +4,12 @@ import { Button } from "@/components/ui/Button";
 import { CoinAmount } from "@/components/ui/Coin";
 import { useToast } from "@/components/ui/Toast";
 import {
+  DICE_MAX_BET,
   DICE_MAX_TARGET,
+  DICE_MIN_BET,
   DICE_MIN_TARGET,
   diceChanceBps,
+  diceEffectiveRtp,
   diceMultiplier,
   dicePayout,
   formatDiceRoll,
@@ -54,7 +57,7 @@ export function DiceArenaPage() {
   const [sessionStartedAt] = useState(() => Date.now());
   const [clientNow, setClientNow] = useState(() => Date.now());
   const [now, setNow] = useState(() => Date.now());
-  const [amount, setAmount] = useState(20);
+  const [amount, setAmount] = useState(DICE_MIN_BET);
   const [side, setSide] = useState<DiceSide>("under");
   const [target, setTarget] = useState(5000);
   const [busy, setBusy] = useState(false);
@@ -120,12 +123,14 @@ export function DiceArenaPage() {
   }, [token]);
 
   const phase = state?.round.phase ?? "betting";
-  const minBet = state?.limits.min_bet ?? 10;
-  const maxBet = state?.limits.max_bet ?? 500;
+  const minBet = state?.limits.min_bet ?? DICE_MIN_BET;
+  const maxBet = state?.limits.max_bet ?? DICE_MAX_BET;
   const currentBet = state?.bets.find((bet) => bet.is_me) ?? null;
   const chance = diceChanceBps(target, side);
   const multiplier = diceMultiplier(target, side);
-  const possiblePayout = dicePayout(clampStake(amount, minBet, maxBet), multiplier);
+  const wagerAmount = clampStake(amount, minBet, maxBet);
+  const possiblePayout = dicePayout(wagerAmount, multiplier);
+  const effectiveRtp = diceEffectiveRtp(wagerAmount, target, side) * 100;
   const balance = state?.wallet.balance ?? profile?.coins ?? 0;
   const bettingEnds = asMs(state?.round.betting_ends_at ?? null) ?? now;
   const nextAt = asMs(state?.round.next_at ?? null) ?? now;
@@ -184,7 +189,7 @@ export function DiceArenaPage() {
 
       <div className="dice-responsible" role="note">
         <ShieldCheck size={16} aria-hidden="true" />
-        ۱۸+ · RTP نظری ۹۹٪ · سقف باخت روزانه {toFaDigits(state?.stats.daily_loss_cap ?? 300)} sh ·
+        ۱۸+ · RTP پایه ۹۹٪؛ RTP واقعی انتخاب فعلی {toFaDigits(effectiveRtp.toFixed(2))}٪ · سقف باخت روزانه {toFaDigits(state?.stats.daily_loss_cap ?? 300)} sh ·
         هر نتیجه مستقل است؛ باخت قبلی شانس راند بعد را تغییر نمی‌دهد.
       </div>
 
@@ -251,6 +256,7 @@ export function DiceArenaPage() {
             <div><span>پیش‌بینی شما</span><strong>{side === "under" ? "کمتر از" : "بیشتر یا مساوی"} {formatDiceTarget(target)}</strong></div>
             <div><span>شانس برد</span><strong>{(chance / 100).toFixed(2)}٪</strong></div>
             <div><span>ضریب</span><strong dir="ltr">{formatMultiplier(multiplier)}</strong></div>
+            <div><span>RTP واقعی</span><strong>{effectiveRtp.toFixed(2)}٪</strong></div>
           </header>
 
           <div className="dice-side-switch" role="group" aria-label="جهت شرط">
@@ -284,7 +290,7 @@ export function DiceArenaPage() {
             />
           </label>
           <div className="dice-chips">
-            {[10, 20, 50, 100, 250].map((chip) => (
+            {[100, 150, 200, 300].map((chip) => (
               <button type="button" key={chip} disabled={Boolean(currentBet)} onClick={() => setAmount(clampStake(chip, minBet, maxBet))}>{toFaDigits(chip)}</button>
             ))}
           </div>

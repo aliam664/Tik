@@ -8,6 +8,7 @@ import {
   LogOut,
   RefreshCw,
   ShoppingBag,
+  Sparkles,
   Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -119,12 +120,17 @@ export function ProfilePage() {
   const s = p.stats;
   const winRate = s.games > 0 ? Math.round((s.wins / s.games) * 100) : 0;
   const stored = playerIdentity.load();
+  const equippedTitle = data.equipped?.title;
+  const equippedFrame = data.equipped?.frame;
+  const daily = data.daily_gameplay;
+  const dailyPercent = daily?.cap > 0 ? Math.min(100, Math.round((daily.earned / daily.cap) * 100)) : 0;
 
   return (
     <div className="page">
-      <section className="card profile-head">
+      <section className={`card profile-head ${equippedFrame ? `profile-head--${equippedFrame.rarity}` : ""}`}>
         <div className="profile-head__main">
           <h1 className="card__title">{p.display_name}</h1>
+          {equippedTitle ? <span className="profile-equipped-title">✦ {equippedTitle.name}</span> : null}
           <div className="profile-head__badges">
             <TierBadge tier={p.rating.tier} />
             <span className="profile-head__rating ltr">
@@ -167,6 +173,45 @@ export function ProfilePage() {
         <StatBox label="بازی شرطی" value={s.stakes_played} />
         <StatBox label="برد شرطی" value={s.stakes_won} tone="pos" />
       </section>
+
+      {daily ? (
+        <section className="card daily-earnings-card">
+          <div className="daily-earnings-card__head">
+            <div>
+              <h2 className="card__title" style={{ fontSize: "1.05rem" }}>
+                سقف پاداش روزانه بازی‌ها
+              </h2>
+              <p className="card__sub">
+                امروز {toFaDigits(daily.earned)} از {toFaDigits(daily.cap)} شریف‌کوین دریافت کرده‌اید؛ پاداش شرط‌بندی جزو این سقف نیست.
+              </p>
+            </div>
+            <CoinAmount amount={daily.remaining} size={18} />
+          </div>
+          <div className="daily-earnings-progress" role="progressbar" aria-valuemin={0} aria-valuemax={daily.cap} aria-valuenow={daily.earned}>
+            <span style={{ width: `${dailyPercent}%` }} />
+          </div>
+          <small>{toFaDigits(daily.remaining)} سکه پاداش گیم‌پلی تا بازنشانی روزانه باقی مانده است.</small>
+        </section>
+      ) : null}
+
+      {data.inventory?.length ? (
+        <section className="card">
+          <h2 className="card__title" style={{ fontSize: "1.05rem" }}>
+            <Sparkles size={17} aria-hidden="true" /> مجموعه آرایشی من
+          </h2>
+          <div className="profile-inventory">
+            {data.inventory.map((item) => (
+              <div key={item.id} className={item.equipped ? "is-equipped" : ""}>
+                <strong>{item.name}</strong>
+                <span>{item.equipped ? "فعال" : "خریداری‌شده"}</span>
+              </div>
+            ))}
+          </div>
+          <Link to="/shop">
+            <Button variant="secondary" size="sm">مدیریت تجهیزات در فروشگاه</Button>
+          </Link>
+        </section>
+      ) : null}
 
       <section className="card recovery-card">
         <h2 className="card__title" style={{ fontSize: "1.05rem" }}>

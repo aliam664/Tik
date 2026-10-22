@@ -4,7 +4,7 @@ import {
   MAX_EQUIPPED_SPELLBOOKS,
   MEDIEVAL_SHOP_ITEMS,
   MEDIEVAL_WEAPONS,
-  SHERIFF_COIN_NAME,
+  RUN_COIN_NAME,
 } from "@/games/lastNight/catalog";
 import type {
   LnRoomPlayer,
@@ -51,7 +51,7 @@ export function LastNightShopModal({
           <div>
             <span className="ln-badge-gold">آهنگری و دکان جادوگر دهکده</span>
             <h2 className="ln-modal-title">
-              فروشگاه بقا و تجهیز جادو ({SHERIFF_COIN_NAME})
+              فروشگاه بقا و تجهیز جادو ({RUN_COIN_NAME})
             </h2>
           </div>
           <div className="ln-modal-wallet">
@@ -59,7 +59,7 @@ export function LastNightShopModal({
             <div>
               <div className="ln-wallet-label">خزانه مشترک تیم</div>
               <strong className="ln-wallet-amount">
-                {teamSheriffCoins.toLocaleString("en-US")} {SHERIFF_COIN_NAME}
+                {teamSheriffCoins.toLocaleString("en-US")} {RUN_COIN_NAME}
               </strong>
             </div>
             <button type="button" className="btn btn--ghost btn--sm" onClick={onClose}>
@@ -119,7 +119,7 @@ export function LastNightShopModal({
                     <span className="ln-price-pill">
                       {w.price === 0
                         ? "Free / رایگان"
-                        : `${w.price} ${SHERIFF_COIN_NAME}`}
+                        : `${w.price} ${RUN_COIN_NAME}`}
                     </span>
                   </div>
                   <p className="ln-item-desc">{w.descriptionFa}</p>
@@ -158,7 +158,7 @@ export function LastNightShopModal({
                         disabled={!canAfford || busyId === w.id}
                         onClick={() => void onBuyWeapon(w.id)}
                       >
-                        خرید با {w.price} {SHERIFF_COIN_NAME}
+                        خرید با {w.price} {RUN_COIN_NAME}
                       </button>
                     )}
                   </div>
@@ -196,7 +196,7 @@ export function LastNightShopModal({
                         <span className="ln-sub">{book.nameFa}</span>
                       </div>
                       <span className="ln-price-pill">
-                        {book.price.toLocaleString("en-US")} {SHERIFF_COIN_NAME}
+                        {book.price.toLocaleString("en-US")} {RUN_COIN_NAME}
                       </span>
                     </div>
                     <p className="ln-item-desc">{book.descriptionFa}</p>
@@ -215,7 +215,7 @@ export function LastNightShopModal({
                           disabled={!canAfford || busyId === book.id}
                           onClick={() => void onBuySpellbook(book.id)}
                         >
-                          خرید با {book.price.toLocaleString("en-US")} {SHERIFF_COIN_NAME}
+                          خرید با {book.price.toLocaleString("en-US")} {RUN_COIN_NAME}
                         </button>
                       ) : (
                         <button
@@ -256,7 +256,7 @@ export function LastNightShopModal({
                       <span className="ln-sub">{item.nameFa}</span>
                     </div>
                     <span className="ln-price-pill">
-                      {item.price} {SHERIFF_COIN_NAME}
+                      {item.price} {RUN_COIN_NAME}
                     </span>
                   </div>
                   <p className="ln-item-desc">{item.descriptionFa}</p>
@@ -289,7 +289,7 @@ export function LastNightShopModal({
                         disabled={!canAfford || busyId === item.id}
                         onClick={() => void onBuyItem(item.id)}
                       >
-                        خرید ({item.price} {SHERIFF_COIN_NAME})
+                        خرید ({item.price} {RUN_COIN_NAME})
                       </button>
                     )}
                     {isUsableConsumable && invCount > 0 && (

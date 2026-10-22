@@ -4,8 +4,11 @@
  * 4 medieval maps, 9 enemy types, 3 multi-phase bosses, and authoritative multiplayer rooms.
  */
 
-export const CURRENCY_NAME = "Sheriff Coin" as const;
-export const SHERIFF_COIN_NAME = CURRENCY_NAME;
+/** Temporary team treasury used only inside one Last Night campaign. */
+export const RUN_COIN_NAME = "Run Coin" as const;
+export const CURRENCY_NAME = RUN_COIN_NAME;
+/** Persistent cross-game wallet currency. */
+export const SHERIFF_COIN_NAME = "Sheriff Coin" as const;
 
 export type MedievalWeaponId =
   | "rusty_sword"

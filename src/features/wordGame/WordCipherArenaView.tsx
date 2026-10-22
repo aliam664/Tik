@@ -229,8 +229,8 @@ export function WordCipherArenaView({
                     پاداش کیف‌پول Sheriff Coin
                   </div>
                   <strong style={{ color: "#f3be58", fontSize: "1.1rem" }}>
-                    برنده +{state.settlement.win_reward_sh ?? 35} SH · مشارکت +
-                    {state.settlement.play_reward_sh ?? 15} SH
+                    برنده +{state.settlement.win_reward_sh ?? 24} SH · مشارکت +
+                    {state.settlement.play_reward_sh ?? 10} SH
                   </strong>
                 </div>
               </div>

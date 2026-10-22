@@ -94,7 +94,7 @@ export const PLATFORM_GAMES: readonly PlatformGame[] = [
     titleEn: "LAST NIGHT — MEDIEVAL SURVIVAL",
     tagline: "کمپین آنلاین ۲ نفره پیکسل‌آرت در ۴ نقشه، ۱۰ موج، ۶ سلاح و ۶ کتاب جادو",
     description:
-      "بقای قرون‌وسطایی و فانتزی تاریک ۲بعدی از بالا (Top-Down Pixel Art): دهکده نفرین‌شده، جنگل تاریک، جنگل برفی و دخمه‌های باستانی به همراه خزانه مشترک Sheriff Coin، آهنگری، حداکثر ۲ کتاب جادوی هم‌زمان و ۳ غول چندفازی.",
+      "بقای قرون‌وسطایی و فانتزی تاریک ۲بعدی از بالا (Top-Down Pixel Art): دهکده نفرین‌شده، جنگل تاریک، جنگل برفی و دخمه‌های باستانی با خزانه موقت Run Coin، پاداش پایدار پایان کمپین، آهنگری، حداکثر ۲ کتاب جادوی هم‌زمان و ۳ غول چندفازی.",
     status: "live",
     route: "/games/last-night",
     roomRoutePrefix: "/games/last-night/room",
@@ -108,7 +108,7 @@ export const PLATFORM_GAMES: readonly PlatformGame[] = [
     features: [
       "کمپین ۱۰ موجی ۲ نفره",
       "۶ سلاح + ۶ کتاب جادو",
-      "خزانه مشترک Sheriff Coin",
+      "خزانه موقت Run Coin + پاداش Sheriff Coin",
       "۳ غول بزرگ چندفازی",
     ],
     navLabel: "Last Night",

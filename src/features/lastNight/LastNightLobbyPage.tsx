@@ -8,6 +8,7 @@ import {
   MEDIEVAL_MAPS,
   MEDIEVAL_SHOP_ITEMS,
   MEDIEVAL_WEAPONS,
+  RUN_COIN_NAME,
   SHERIFF_COIN_NAME,
 } from "@/games/lastNight/catalog";
 import { saveLnSession } from "@/games/lastNight/session";
@@ -89,20 +90,20 @@ export function LastNightLobbyPage() {
           <div className="ln-hero-badges">
             <span className="ln-badge-gold">2D Top-Down Pixel Art</span>
             <span className="ln-badge-dark">کمپین آنلاین ۲ نفره (۱۰ موج در ۴ نقشه)</span>
-            <span className="ln-badge-gold">ارز رسمی: {SHERIFF_COIN_NAME}</span>
+            <span className="ln-badge-gold">داخل کمپین: {RUN_COIN_NAME} · پاداش پایدار: {SHERIFF_COIN_NAME}</span>
           </div>
           <h1 className="ln-hero-title">Last Night — Medieval Survival</h1>
           <p className="ln-hero-subtitle">
             بقای قرون‌وسطایی و فانتزی تاریک: در کنار هم‌تیمی خود در دهکده نفرین‌شده،
             جنگل تاریک، جنگل برفی و دخمه‌های باستانی بجنگید، مشعل‌ها و رون‌های باستانی را
             روشن کنید، با{" "}
-            <strong>{SHERIFF_COIN_NAME}</strong> سلاح‌های قرون‌وسطایی و{" "}
-            <strong>کتاب‌های جادو</strong> بخرید و ۳ غول بزرگ را شکست دهید.
+            <strong>{RUN_COIN_NAME}</strong> موقتِ همان کمپین سلاح‌های قرون‌وسطایی و{" "}
+            <strong>کتاب‌های جادو</strong> بخرید و ۳ غول بزرگ را شکست دهید. این خزانه پس از پایان اتاق صفر می‌شود؛ پاداش پایان کامل کمپین ۷۵ Sheriff Coin پایدار است.
           </p>
 
           <div className="ln-wallet-strip">
             <div>
-              <small>موجودی کیف پول پلتفرم شما ({SHERIFF_COIN_NAME}):</small>
+              <small>موجودی کیف پول پایدار شما ({SHERIFF_COIN_NAME}):</small>
               <strong>
                 🪙 {(profile?.coins ?? 0).toLocaleString("en-US")} {SHERIFF_COIN_NAME}
               </strong>
@@ -167,7 +168,7 @@ export function LastNightLobbyPage() {
           <h3>🛡️ پیوستن به اتاق هم‌تیمی (Join Co-op Room)</h3>
           <p>
             کد اتاق را وارد کنید تا از دستگاه خود به کمپین هم‌تیمی متصل شوید و در خزانه{" "}
-            <strong>{SHERIFF_COIN_NAME}</strong> شریک شوید.
+            <strong>{RUN_COIN_NAME}</strong> شریک شوید.
           </p>
           <div className="ln-form-row">
             <label htmlFor="ln-room-code">کد ۶ رقمی اتاق</label>
@@ -224,7 +225,7 @@ export function LastNightLobbyPage() {
               className={`ln-shop-tab ${codexTab === "items" ? "ln-shop-tab--active" : ""}`}
               onClick={() => setCodexTab("items")}
             >
-              🧪 ۱۱ آیتم فروشگاه ({SHERIFF_COIN_NAME})
+              🧪 ۱۱ آیتم فروشگاه ({RUN_COIN_NAME})
             </button>
             <button
               type="button"
@@ -277,7 +278,7 @@ export function LastNightLobbyPage() {
                     <span className="ln-sub">{w.nameFa}</span>
                   </div>
                   <span className="ln-price-pill">
-                    {w.price === 0 ? "Free" : `${w.price} ${SHERIFF_COIN_NAME}`}
+                    {w.price === 0 ? "Free" : `${w.price} ${RUN_COIN_NAME}`}
                   </span>
                 </div>
                 <p className="ln-item-desc">{w.descriptionFa}</p>
@@ -304,7 +305,7 @@ export function LastNightLobbyPage() {
                     <span className="ln-sub">{b.nameFa}</span>
                   </div>
                   <span className="ln-price-pill">
-                    {b.price.toLocaleString("en-US")} {SHERIFF_COIN_NAME}
+                    {b.price.toLocaleString("en-US")} {RUN_COIN_NAME}
                   </span>
                 </div>
                 <p className="ln-item-desc">{b.descriptionFa}</p>
@@ -330,7 +331,7 @@ export function LastNightLobbyPage() {
                     <span className="ln-sub">{item.nameFa}</span>
                   </div>
                   <span className="ln-price-pill">
-                    {item.price} {SHERIFF_COIN_NAME}
+                    {item.price} {RUN_COIN_NAME}
                   </span>
                 </div>
                 <p className="ln-item-desc">{item.descriptionEn}</p>
@@ -361,7 +362,7 @@ export function LastNightLobbyPage() {
                       </span>
                     </div>
                     <span className="ln-price-pill">
-                      +{boss.rewardCoins} {SHERIFF_COIN_NAME}
+                      +{boss.rewardCoins} {RUN_COIN_NAME}
                     </span>
                   </div>
                   <div className="ln-stat-chips">
@@ -386,7 +387,7 @@ export function LastNightLobbyPage() {
                       <span className="ln-sub">{en.nameFa}</span>
                     </div>
                     <span className="ln-price-pill">
-                      +{en.rewardCoins} {SHERIFF_COIN_NAME}
+                      +{en.rewardCoins} {RUN_COIN_NAME}
                     </span>
                   </div>
                   <div className="ln-stat-chips">

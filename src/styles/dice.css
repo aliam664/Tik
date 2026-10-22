@@ -240,7 +240,7 @@
 .dice-controls { padding: 1.1rem; }
 .dice-controls > header {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.7rem;
 }
 

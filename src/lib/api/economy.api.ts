@@ -49,6 +49,13 @@ export const economyApi = {
     });
   },
 
+  equipShopItem(token: string, itemId: string) {
+    return rpc<{ ok: boolean; item: { id: string; name: string; kind: string } }>(
+      "equip_shop_item",
+      { p_token: token, p_item_id: itemId },
+    );
+  },
+
   getAnnouncements() {
     return rpc<{ body: string; level: string; ends_at: string }[]>(
       "get_active_announcements",

@@ -67,8 +67,8 @@ describe("CrashSalon local engine", () => {
     let seed = randomSeed();
     while (crashPoint(seed, "sheriff-blast:1") < 300) seed = randomSeed();
     const salon = new CrashSalon(500, 0, seed);
-    salon.placeBet(50, 200, "آرش", 10);
-    expect(() => salon.placeBet(10, null, "آرش", 5000)).toThrow("BETTING_CLOSED");
+    salon.placeBet(100, 200, "آرش", 10);
+    expect(() => salon.placeBet(100, null, "آرش", 5000)).toThrow("BETTING_CLOSED");
 
     const flying = salon.getState(5000);
     expect(flying.round.phase).toBe("flying");
@@ -76,7 +76,7 @@ describe("CrashSalon local engine", () => {
     expect(me).toBeTruthy();
     const after = salon.cashOut(me!.id, 5000 + elapsedAt(150));
     expect(after.cashedAt).toBeGreaterThanOrEqual(150);
-    expect(after.payout).toBeGreaterThan(50);
+    expect(after.payout).toBeGreaterThan(100);
   });
 
   it("burns the stake when the round busts before cash-out", () => {
@@ -84,7 +84,7 @@ describe("CrashSalon local engine", () => {
     while (crashPoint(seed, "sheriff-blast:1") > 150) seed = randomSeed();
     const point = crashPoint(seed, "sheriff-blast:1");
     const salon = new CrashSalon(200, 0, seed);
-    salon.placeBet(40, null, "آرش", 20);
+    salon.placeBet(100, null, "آرش", 20);
     const afterStake = salon.getState(20).balance;
     const later = salon.getState(BETTING_MS + elapsedAt(point) + 1);
 
@@ -100,7 +100,7 @@ describe("CrashSalon local engine", () => {
 
     try {
       const salon = new CrashSalon(200, 0, seed);
-      salon.placeBet(40, null, "آرش", 20);
+      salon.placeBet(100, null, "آرش", 20);
       const afterStake = salon.getState(20);
       const withCashedBots = salon.getState(BETTING_MS + elapsedAt(200));
 
@@ -115,9 +115,9 @@ describe("CrashSalon local engine", () => {
   it("rejects NaN stakes and a second bet on the same slot", () => {
     const salon = new CrashSalon(400, 0);
     expect(() => salon.placeBet(Number.NaN, null, "آرش", 10)).toThrow("INVALID_STAKE");
-    salon.placeBet(20, null, "آرش", 20, 0);
-    expect(() => salon.placeBet(20, null, "آرش", 30, 0)).toThrow("SLOT_TAKEN");
-    salon.placeBet(20, null, "آرش", 40, 1);
+    salon.placeBet(100, null, "آرش", 20, 0);
+    expect(() => salon.placeBet(100, null, "آرش", 30, 0)).toThrow("SLOT_TAKEN");
+    salon.placeBet(100, null, "آرش", 40, 1);
     expect(salon.getState(40).round.bets.filter((b) => b.isMe)).toHaveLength(2);
   });
 
@@ -126,7 +126,7 @@ describe("CrashSalon local engine", () => {
     while (crashPoint(seed, "sheriff-blast:1") < 300) seed = randomSeed();
     const salon = new CrashSalon(200, 0, seed);
     salon.seedBalance(200);
-    salon.placeBet(50, 200, "آرش", 10);
+    salon.placeBet(100, 200, "آرش", 10);
     const me = salon.getState(5000).round.bets.find((b) => b.isMe)!;
     salon.cashOut(me.id, 5000 + elapsedAt(150));
     const afterWin = salon.getState(5000 + elapsedAt(150)).balance;

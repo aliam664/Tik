@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   DICE_MAX_TARGET,
+  DICE_MIN_BET,
   DICE_MIN_TARGET,
   diceChanceBps,
+  diceEffectiveRtp,
   diceMultiplier,
   dicePayout,
   diceRoll,
@@ -36,6 +38,16 @@ describe("Sheriff Dice provably-fair math", () => {
         const multiplier = diceMultiplier(target, side) / 100;
         expect(chance * multiplier).toBeLessThanOrEqual(0.9900000001);
         expect(chance * multiplier).toBeGreaterThan(0.981);
+      }
+    }
+  });
+
+  it("keeps actual RTP above 98.17% at the payout-precise minimum wager", () => {
+    for (const side of ["under", "over"] as const) {
+      for (let target = DICE_MIN_TARGET; target <= DICE_MAX_TARGET; target += 50) {
+        const rtp = diceEffectiveRtp(DICE_MIN_BET, target, side);
+        expect(rtp).toBeGreaterThanOrEqual(0.9817);
+        expect(rtp).toBeLessThanOrEqual(0.9900000001);
       }
     }
   });
