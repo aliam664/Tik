@@ -1,0 +1,75 @@
+# LiteLLM Proxy - پیکربندی نمونه معماری A (ساده)
+# تاریخ: 2026-10-23
+# نحوه استفاده: litellm --config config.yaml --port 4000
+# کلیدها را در .env بگذار، هرگز plaintext اینجا ننویس
+
+model_list:
+  # Primary: Groq gpt-oss-120b (30 RPM / 1000 RPD / 8K TPM)
+  - model_name: claude-sonnet
+    litellm_params:
+      model: groq/openai/gpt-oss-120b
+      api_key: os.environ/GROQ_API_KEY
+      api_base: https://api.groq.com/openai/v1
+    model_info:
+      id: groq-gpt-oss-120b
+
+  # کلید دوم Groq (اختیاری - چرخش خودکار)
+  - model_name: claude-sonnet
+    litellm_params:
+      model: groq/openai/gpt-oss-120b
+      api_key: os.environ/GROQ_API_KEY_2
+      api_base: https://api.groq.com/openai/v1
+
+  # Fallback 1: Gemini 2.5 Flash (10-15 RPM / 1500 RPD)
+  - model_name: gemini-flash
+    litellm_params:
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  # Fallback 2: OpenRouter Free (20 RPM / 50-1000 RPD)
+  - model_name: openrouter-free
+    litellm_params:
+      model: openrouter/nvidia/nemotron-3-super-120b-a12b:free
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
+  # Fallback 3: Mistral Codestral (کدنویسی)
+  - model_name: mistral-codestral
+    litellm_params:
+      model: mistral/codestral-latest
+      api_key: os.environ/MISTRAL_API_KEY
+
+  # Fallback 4: SambaNova DeepSeek V3.1 (20 RPM / 20 RPD)
+  - model_name: sambanova-deepseek
+    litellm_params:
+      model: openai/DeepSeek-V3.1
+      api_key: os.environ/SAMBANOVA_API_KEY
+      api_base: https://api.sambanova.ai/v1
+
+  # مدل Haiku برای تسک‌های سریع/ارزان
+  - model_name: claude-haiku
+    litellm_params:
+      model: groq/openai/gpt-oss-20b
+      api_key: os.environ/GROQ_API_KEY
+      api_base: https://api.groq.com/openai/v1
+
+litellm_settings:
+  drop_params: true
+  num_retries: 2
+  request_timeout: 60
+  fallbacks:
+    - claude-sonnet: [gemini-flash, openrouter-free, mistral-codestral]
+    - gemini-flash: [openrouter-free, sambanova-deepseek]
+    - claude-haiku: [gemini-flash, openrouter-free]
+  context_window_fallbacks:
+    - claude-sonnet: [gemini-flash]
+  allowed_fails: 3
+  cooldown_time: 60
+
+router_settings:
+  routing_strategy: simple-shuffle
+  num_retries: 2
+  timeout: 60
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
