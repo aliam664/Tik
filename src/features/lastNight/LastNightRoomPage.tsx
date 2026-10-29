@@ -20,17 +20,20 @@ import {
   applyFrostEffect,
   calculateIncomingDamage,
   calculateMeleeDamage,
+  computeStreakBonusPct,
   createMapInteractables,
   createWaveEnemies,
   findNearestEnemy,
   getBossPhase,
   resolveEnemySeparation,
   resolveLandmarkCollisions,
+  STREAK_WINDOW_SEC,
   type SimEnemy,
   type SimFloatingText,
   type SimInteractable,
   type SimLightningArc,
   type SimMeleeSlash,
+  type SimParticle,
   type SimProjectile,
   type SimTelegraphZone,
   type SimThornTrap,
@@ -50,7 +53,7 @@ import type {
   MedievalShopItemId,
   MedievalWeaponId,
 } from "@/types/lastNight";
-import { LastNightRoomHud } from "./LastNightRoomHud";
+import { LastNightRoomHud, type LnWaveBanner } from "./LastNightRoomHud";
 
 type CombatSyncRetry = {
   roomCode: string;
@@ -67,6 +70,34 @@ const isCombatActive = (
 ): boolean =>
   state?.status === "active" &&
   (state.phase === "combat" || state.phase === "boss");
+
+/** Spawn a radial burst of visual particles (death poofs, sparks, impacts). */
+function spawnBurst(
+  host: { particles: SimParticle[] },
+  x: number,
+  y: number,
+  count: number,
+  color: string,
+  speed = 130,
+): void {
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2 + Math.random() * 0.7;
+    const vel = speed * (0.5 + Math.random() * 0.7);
+    host.particles.push({
+      x,
+      y,
+      vx: Math.cos(angle) * vel,
+      vy: Math.sin(angle) * vel,
+      lifeSec: 0.32 + Math.random() * 0.38,
+      maxLifeSec: 0.7,
+      color,
+      size: 2.5 + Math.random() * 2.6,
+    });
+  }
+  if (host.particles.length > 280) {
+    host.particles.splice(0, host.particles.length - 280);
+  }
+}
 
 export function LastNightRoomPage() {
   const { roomCode = "" } = useParams<{ roomCode: string }>();
@@ -89,6 +120,7 @@ export function LastNightRoomPage() {
   const [soundMuted, setSoundMuted] = useState(false);
   const [autoAimEnabled, setAutoAimEnabled] = useState(true);
   const [theaterMode, setTheaterMode] = useState(false);
+  const [waveBanner, setWaveBanner] = useState<LnWaveBanner | null>(null);
 
   const [hudSnapshot, setHudSnapshot] = useState<{
     hp: number;
@@ -108,6 +140,9 @@ export function LastNightRoomPage() {
     shadowsSec: number;
     spiritSec: number;
     enemiesRemaining: number;
+    waveTotal: number;
+    killStreak: number;
+    bestStreak: number;
     nearestPromptFa: string | null;
     activeBoss: {
       nameFa: string;
@@ -135,6 +170,9 @@ export function LastNightRoomPage() {
     shadowsSec: 0,
     spiritSec: 0,
     enemiesRemaining: 0,
+    waveTotal: 0,
+    killStreak: 0,
+    bestStreak: 0,
     nearestPromptFa: null,
     activeBoss: null,
   });
@@ -191,6 +229,11 @@ export function LastNightRoomPage() {
     lightningArcs: SimLightningArc[];
     telegraphs: SimTelegraphZone[];
     floatingTexts: SimFloatingText[];
+    particles: SimParticle[];
+    waveTotalEnemies: number;
+    killStreak: number;
+    streakTimerSec: number;
+    bestStreak: number;
     nearestInteractableId: string | null;
   }>({
     initializedWave: 0,
@@ -244,6 +287,11 @@ export function LastNightRoomPage() {
     lightningArcs: [],
     telegraphs: [],
     floatingTexts: [],
+    particles: [],
+    waveTotalEnemies: 0,
+    killStreak: 0,
+    streakTimerSec: 0,
+    bestStreak: 0,
     nearestInteractableId: null,
   });
 
@@ -351,6 +399,11 @@ export function LastNightRoomPage() {
     sim.lightningArcs = [];
     sim.telegraphs = [];
     sim.floatingTexts = [];
+    sim.particles = [];
+    sim.waveTotalEnemies = 0;
+    sim.killStreak = 0;
+    sim.streakTimerSec = 0;
+    sim.bestStreak = 0;
     sim.nearestInteractableId = null;
 
     setHudSnapshot((current) => ({
@@ -372,6 +425,9 @@ export function LastNightRoomPage() {
       shadowsSec: 0,
       spiritSec: 0,
       enemiesRemaining: 0,
+      waveTotal: 0,
+      killStreak: 0,
+      bestStreak: 0,
       nearestPromptFa: null,
       activeBoss: null,
     }));
@@ -522,12 +578,19 @@ export function LastNightRoomPage() {
       sim.initializedWave = state.wave;
       sim.waveClearSent = false;
       sim.enemies = createWaveEnemies(state.wave);
+      sim.waveTotalEnemies = sim.enemies.length;
       sim.projectiles = [];
       sim.telegraphs = [];
       sim.nearestInteractableId = null;
+      setWaveBanner({
+        wave: state.wave,
+        boss: Boolean(getBossForWave(state.wave)),
+        id: Date.now(),
+      });
       setHudSnapshot((current) => ({
         ...current,
         enemiesRemaining: sim.enemies.length,
+        waveTotal: sim.waveTotalEnemies,
         activeBoss: null,
       }));
       if (me) {
@@ -1300,6 +1363,13 @@ export function LastNightRoomPage() {
     }
   }, [shopOpen]);
 
+  // Auto-dismiss the wave intro banner after a short cinematic beat.
+  useEffect(() => {
+    if (!waveBanner) return;
+    const timer = window.setTimeout(() => setWaveBanner(null), 2800);
+    return () => window.clearTimeout(timer);
+  }, [waveBanner]);
+
   useEffect(() => {
     const sim = simRef.current;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -1507,6 +1577,14 @@ export function LastNightRoomPage() {
         if (Math.abs(diff) <= arcRad / 2 + 0.35) {
           enemy.hp -= effectiveDamage;
           enemy.hitFlashSec = 0.14;
+          spawnBurst(
+            sim,
+            enemy.x,
+            enemy.y,
+            5,
+            sim.fireOilSec > 0 ? "#f97316" : "#e2e8f0",
+            135,
+          );
           const kbResist = enemy.isBoss
             ? 0.15
             : enemy.kind === "stone_giant"
@@ -1751,6 +1829,7 @@ export function LastNightRoomPage() {
                 enemy.burnSec = 3;
                 enemy.burnDps = 20;
               }
+              spawnBurst(sim, enemy.x, enemy.y, 4, proj.color, 120);
               sim.floatingTexts.push({
                 id: `hit_${Date.now()}_${Math.random()}`,
                 x: enemy.x,
@@ -1822,8 +1901,50 @@ export function LastNightRoomPage() {
         }
 
         if (enemy.hp <= 0) {
-          sim.pendingCoinsEarned += enemy.rewardCoins;
+          // Kill streak window refreshes on every kill; coins scale up to +30%.
+          sim.killStreak += 1;
+          sim.streakTimerSec = STREAK_WINDOW_SEC;
+          sim.bestStreak = Math.max(sim.bestStreak, sim.killStreak);
+          const streakPct = computeStreakBonusPct(sim.killStreak);
+          const streakBonus = Math.round((enemy.rewardCoins * streakPct) / 100);
+          sim.pendingCoinsEarned += enemy.rewardCoins + streakBonus;
           sim.pendingKills += 1;
+          spawnBurst(
+            sim,
+            enemy.x,
+            enemy.y,
+            enemy.isBoss ? 20 : enemy.elite ? 14 : 9,
+            enemy.isBoss ? "#f0abfc" : enemy.elite ? "#fbbf24" : "#94a3b8",
+            enemy.isBoss ? 230 : 145,
+          );
+          if (enemy.isBoss) {
+            sim.floatingTexts.push({
+              id: `kill_boss_${enemy.id}`,
+              x: enemy.x,
+              y: enemy.y - enemy.radius - 26,
+              text: "👑 پادشاه سرنگون شد!",
+              color: "#f0abfc",
+              ttlSec: 1.5,
+            });
+          } else if (enemy.elite) {
+            sim.floatingTexts.push({
+              id: `kill_elite_${enemy.id}`,
+              x: enemy.x,
+              y: enemy.y - enemy.radius - 22,
+              text: "⚔️ نخبه منهدم شد!",
+              color: "#fbbf24",
+              ttlSec: 1.1,
+            });
+          } else if (sim.killStreak >= 3) {
+            sim.floatingTexts.push({
+              id: `streak_${enemy.id}`,
+              x: enemy.x,
+              y: enemy.y - enemy.radius - 18,
+              text: `×${sim.killStreak} زنجیره!`,
+              color: streakPct >= 30 ? "#fb923c" : "#fde047",
+              ttlSec: 1,
+            });
+          }
           continue;
         }
 
@@ -1992,6 +2113,7 @@ export function LastNightRoomPage() {
           }
           if (dmg > 0) {
             sim.hp = Math.max(0, sim.hp - dmg);
+            spawnBurst(sim, sim.localX, sim.localY, 6, "#ef4444", 115);
             sim.floatingTexts.push({
               id: `phit_${Date.now()}_${Math.random()}`,
               x: sim.localX,
@@ -2025,6 +2147,26 @@ export function LastNightRoomPage() {
       sim.floatingTexts = sim.floatingTexts
         .map((f) => ({ ...f, y: f.y - 22 * dt, ttlSec: f.ttlSec - dt }))
         .filter((f) => f.ttlSec > 0);
+
+      // Kill streak decay — go cold when no kill lands inside the window.
+      if (sim.streakTimerSec > 0) {
+        sim.streakTimerSec = Math.max(0, sim.streakTimerSec - dt);
+        if (sim.streakTimerSec === 0) sim.killStreak = 0;
+      }
+
+      // Visual particles (sparks & death poofs) with drag + light gravity.
+      const aliveParticles: SimParticle[] = [];
+      for (const particle of sim.particles) {
+        particle.lifeSec -= dt;
+        if (particle.lifeSec <= 0) continue;
+        particle.x += particle.vx * dt;
+        particle.y += particle.vy * dt;
+        const drag = Math.max(0, 1 - 3.2 * dt);
+        particle.vx *= drag;
+        particle.vy = particle.vy * drag + 55 * dt;
+        aliveParticles.push(particle);
+      }
+      sim.particles = aliveParticles;
 
       if (sim.enemies.length === 0 && !sim.waveClearSent && session) {
         sim.waveClearSent = true;
@@ -2086,6 +2228,9 @@ export function LastNightRoomPage() {
           shadowsSec: sim.shadowsSec,
           spiritSec: sim.spiritSec,
           enemiesRemaining: sim.enemies.length,
+          waveTotal: sim.waveTotalEnemies,
+          killStreak: sim.killStreak,
+          bestStreak: sim.bestStreak,
           nearestPromptFa: nearItem ? nearItem.labelFa : null,
           activeBoss:
             bossEntity && bossSpec
@@ -2150,6 +2295,7 @@ export function LastNightRoomPage() {
           seat: remoteAlly.seat,
           name: remoteAlly.name,
           isLocal: false,
+          role: "ally",
           x: remoteAlly.pos_x,
           y: remoteAlly.pos_y,
           aimAngle: remoteAlly.facing ?? 0,
@@ -2173,6 +2319,7 @@ export function LastNightRoomPage() {
           seat: 2,
           name: "سلحشور همراه (AI)",
           isLocal: false,
+          role: "squire",
           x: sim.squireX,
           y: sim.squireY,
           aimAngle: sim.squireAimAngle,
@@ -2205,6 +2352,7 @@ export function LastNightRoomPage() {
         lightningArcs: sim.lightningArcs,
         telegraphs: sim.telegraphs,
         floatingTexts: sim.floatingTexts,
+        particles: sim.particles,
         nearestInteractableId: sim.nearestInteractableId,
       });
     },
@@ -2289,6 +2437,7 @@ export function LastNightRoomPage() {
       joining={joining}
       handleJoinRoom={handleJoinRoom}
       hudSnapshot={hudSnapshot}
+      waveBanner={waveBanner}
       simRef={simRef}
       setCanvasElement={setCanvasElement}
       busyId={busyId}

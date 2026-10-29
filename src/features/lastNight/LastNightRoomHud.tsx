@@ -21,6 +21,12 @@ const QUICK_BELT_ITEMS: { id: MedievalShopItemId; key: string; shortFa: string }
   { id: "thorn_trap", key: "6", shortFa: "تله خاردار" },
 ];
 
+export type LnWaveBanner = {
+  wave: number;
+  boss: boolean;
+  id: number;
+};
+
 export type LnHudSnapshot = {
   hp: number;
   maxHp: number;
@@ -39,6 +45,9 @@ export type LnHudSnapshot = {
   shadowsSec: number;
   spiritSec: number;
   enemiesRemaining: number;
+  waveTotal: number;
+  killStreak: number;
+  bestStreak: number;
   nearestPromptFa: string | null;
   activeBoss: {
     nameFa: string;
@@ -49,6 +58,10 @@ export type LnHudSnapshot = {
     portraitUrl: string;
   } | null;
 };
+
+const FA_NUMBER = new Intl.NumberFormat("fa-IR");
+const faDigits = (value: number): string =>
+  FA_NUMBER.format(Math.max(0, Math.round(value)));
 
 type AimSim = {
   aimX: number;
@@ -76,6 +89,7 @@ export interface LastNightRoomHudProps {
   errorBanner: string | null;
   setErrorBanner: Dispatch<SetStateAction<string | null>>;
   toastBanner: string | null;
+  waveBanner: LnWaveBanner | null;
   isFinished: boolean;
   isPrepOrWaiting: boolean;
   joinName: string;
@@ -119,6 +133,7 @@ export function LastNightRoomHud({
   errorBanner,
   setErrorBanner,
   toastBanner,
+  waveBanner,
   isFinished,
   isPrepOrWaiting,
   joinName,
@@ -275,8 +290,31 @@ export function LastNightRoomHud({
               <span className="ln-boss-phase-tag">
                 فاز نبرد {hudSnapshot.activeBoss.phase} از ۳
               </span>
+              <span className="ln-boss-phase-pips" aria-hidden="true">
+                {[1, 2, 3].map((ph) => (
+                  <span
+                    key={ph}
+                    className={`ln-boss-phase-dot ${
+                      hudSnapshot.activeBoss && hudSnapshot.activeBoss.phase >= ph
+                        ? "is-active"
+                        : ""
+                    }`}
+                  />
+                ))}
+              </span>
               <span>
-                HP: {hudSnapshot.activeBoss.hp} / {hudSnapshot.activeBoss.maxHp}
+                HP: {hudSnapshot.activeBoss.hp} / {hudSnapshot.activeBoss.maxHp} (
+                {faDigits(
+                  Math.max(
+                    0,
+                    Math.ceil(
+                      (hudSnapshot.activeBoss.hp /
+                        Math.max(1, hudSnapshot.activeBoss.maxHp)) *
+                        100,
+                    ),
+                  ),
+                )}
+                ٪)
               </span>
             </div>
             <div className="ln-progress-track ln-progress-track--boss">
@@ -345,6 +383,28 @@ export function LastNightRoomHud({
               className="ln-canvas-stage"
               aria-label="Last Night — Medieval Survival 2D Pixel Art Arena"
             />
+
+            {waveBanner && !isFinished && (
+              <div
+                key={waveBanner.id}
+                className={`ln-wave-banner ${waveBanner.boss ? "ln-wave-banner--boss" : ""}`}
+                aria-live="polite"
+              >
+                <span className="ln-wave-banner__kicker">
+                  {waveBanner.boss ? "خطر بزرگ در راه است..." : "آماده نبرد"}
+                </span>
+                <strong className="ln-wave-banner__title">
+                  {waveBanner.boss
+                    ? `موج ${faDigits(waveBanner.wave)} — پادشاه نفرین‌شده`
+                    : `موج ${faDigits(waveBanner.wave)}`}
+                </strong>
+                <span className="ln-wave-banner__sub">
+                  {waveBanner.boss
+                    ? "👑 نبرد با غول نقشه آغاز شد"
+                    : `هیولاهای تاریکی از راه رسیدند — ${faDigits(10)} موج تا پیروزی`}
+                </span>
+              </div>
+            )}
 
             {isPrepOrWaiting && (
               <div className="ln-canvas-overlay">
@@ -602,16 +662,38 @@ export function LastNightRoomHud({
           <div className="ln-hud-card">
             <div className="ln-hud-card-head">
               <strong>🛡️ وضعیت شوالیه شما</strong>
-              <span className="ln-seat-badge">Seat #{me?.seat ?? 1}</span>
+              <span className="ln-head-badges">
+                {hudSnapshot.killStreak >= 3 && (
+                  <span
+                    className="ln-streak-badge"
+                    title={`رکورد شخصی این نبرد: ×${faDigits(hudSnapshot.bestStreak)}`}
+                  >
+                    🔥 ×{faDigits(hudSnapshot.killStreak)} زنجیره
+                  </span>
+                )}
+                <span className="ln-seat-badge">صندلی {faDigits(me?.seat ?? 1)}</span>
+              </span>
             </div>
 
             <div className="ln-vital-row">
               <span>سلامتی (HP)</span>
-              <strong>
+              <strong
+                className={
+                  hudSnapshot.hp / Math.max(1, hudSnapshot.maxHp) <= 0.3
+                    ? "ln-vital-hp--low"
+                    : ""
+                }
+              >
                 {hudSnapshot.hp} / {hudSnapshot.maxHp}
               </strong>
             </div>
-            <div className="ln-progress-track">
+            <div
+              className={`ln-progress-track ${
+                hudSnapshot.hp / Math.max(1, hudSnapshot.maxHp) <= 0.3
+                  ? "ln-progress-track--critical"
+                  : ""
+              }`}
+            >
               <div
                 className="ln-progress-fill ln-progress-fill--hp"
                 style={{
@@ -634,6 +716,40 @@ export function LastNightRoomHud({
                 }}
               />
             </div>
+
+            {(hudSnapshot.fireOilSec > 0 ||
+              hudSnapshot.protectionSec > 0 ||
+              hudSnapshot.charmSec > 0 ||
+              hudSnapshot.shadowsSec > 0 ||
+              hudSnapshot.spiritSec > 0) && (
+              <div className="ln-buff-row" aria-label="اثرهای فعال جادویی">
+                {hudSnapshot.fireOilSec > 0 && (
+                  <span className="ln-buff-chip ln-buff-chip--fire">
+                    🔥 روغن آتشین {faDigits(Math.ceil(hudSnapshot.fireOilSec))}s
+                  </span>
+                )}
+                {hudSnapshot.protectionSec > 0 && (
+                  <span className="ln-buff-chip ln-buff-chip--protection">
+                    🛡️ محافظت {faDigits(Math.ceil(hudSnapshot.protectionSec))}s
+                  </span>
+                )}
+                {hudSnapshot.charmSec > 0 && (
+                  <span className="ln-buff-chip ln-buff-chip--charm">
+                    ✨ طلسم {faDigits(Math.ceil(hudSnapshot.charmSec))}s
+                  </span>
+                )}
+                {hudSnapshot.shadowsSec > 0 && (
+                  <span className="ln-buff-chip ln-buff-chip--shadows">
+                    🌑 سایه‌ها {faDigits(Math.ceil(hudSnapshot.shadowsSec))}s
+                  </span>
+                )}
+                {hudSnapshot.spiritSec > 0 && (
+                  <span className="ln-buff-chip ln-buff-chip--spirit">
+                    👻 ارواح {faDigits(Math.ceil(hudSnapshot.spiritSec))}s
+                  </span>
+                )}
+              </div>
+            )}
 
             <div className="ln-weapon-box">
               <div>
@@ -731,8 +847,23 @@ export function LastNightRoomHud({
                 <div>
                   <strong>{ally.name}</strong> ({getWeaponSpec(ally.equipped_weapon).nameEn})
                 </div>
-                <div>
-                  HP: {ally.hp}/{ally.max_hp} | شکار: {ally.kills}
+                <div className="ln-vital-row">
+                  <span>
+                    سلامتی: {ally.hp}/{ally.max_hp} | شکار: {ally.kills}
+                  </span>
+                  {ally.downed && <strong className="ln-ally-downed">در خطر مرگ!</strong>}
+                </div>
+                <div className="ln-progress-track ln-progress-track--ally">
+                  <div
+                    className={`ln-progress-fill ${
+                      ally.hp / Math.max(1, ally.max_hp) <= 0.3
+                        ? "ln-progress-fill--ally-low"
+                        : "ln-progress-fill--ally"
+                    }`}
+                    style={{
+                      width: `${Math.max(0, Math.min(100, (ally.hp / Math.max(1, ally.max_hp)) * 100))}%`,
+                    }}
+                  />
                 </div>
                 {ally.downed && (
                   <button
@@ -755,7 +886,44 @@ export function LastNightRoomHud({
           <div className="ln-hud-card">
             <div className="ln-hud-card-head">
               <strong>🕯️ اهداف نقشه ({currentMapSpec.nameFa})</strong>
-              <span>هیولاهای باقی‌مانده: {hudSnapshot.enemiesRemaining}</span>
+              <span>هیولاهای باقی‌مانده: {faDigits(hudSnapshot.enemiesRemaining)}</span>
+            </div>
+            <div className="ln-wave-progress">
+              <div className="ln-wave-progress__head">
+                <span className="ln-wave-progress__label">
+                  موج {faDigits(state?.wave ?? 1)} از {faDigits(10)}
+                </span>
+                <span className="ln-wave-progress__count">
+                  {hudSnapshot.waveTotal > 0
+                    ? `${faDigits(
+                        Math.max(
+                          0,
+                          hudSnapshot.waveTotal - hudSnapshot.enemiesRemaining,
+                        ),
+                      )} / ${faDigits(hudSnapshot.waveTotal)} نابودشده`
+                    : "در انتظار آغاز موج"}
+                </span>
+              </div>
+              <div className="ln-progress-track ln-progress-track--wave">
+                <div
+                  className="ln-progress-fill ln-progress-fill--wave"
+                  style={{
+                    width: `${
+                      hudSnapshot.waveTotal > 0
+                        ? Math.max(
+                            0,
+                            Math.min(
+                              100,
+                              ((hudSnapshot.waveTotal - hudSnapshot.enemiesRemaining) /
+                                hudSnapshot.waveTotal) *
+                                100,
+                            ),
+                          )
+                        : 0
+                    }%`,
+                  }}
+                />
+              </div>
             </div>
             <ul className="ln-objectives-list">
               {(state?.objectives ?? []).map((obj) => (
