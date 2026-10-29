@@ -223,9 +223,9 @@ export class CrashSalon {
   private settleBet(bet: CrashBet, at: number): CrashBet {
     bet.cashedAt = at;
     bet.payout = payoutFor(bet.amount, at);
-    this.balance += bet.payout;
-    this.sessionPnL += bet.payout;
     if (bet.isMe) {
+      this.balance += bet.payout;
+      this.sessionPnL += bet.payout;
       this.telemetry.playerCashes += 1;
       this.telemetry.playerPaid += bet.payout;
       if (bet.payout - bet.amount > this.telemetry.biggestWin) {
@@ -308,18 +308,20 @@ export class CrashSalon {
     const r = this.round;
     if (r.flyingStartedAt === null) return;
     const elapsed = now - r.flyingStartedAt;
-    const shown = multiplierAt(elapsed);
-    const crashMs = elapsedAt(r.crashPoint);
     for (const bet of r.bets) {
       if (bet.cashedAt !== null) continue;
-      if (bet.autoAt !== null && shown >= bet.autoAt && elapsed < crashMs) {
-        this.settleBet(bet, bet.autoAt);
+      if (bet.autoAt !== null) {
+        if (bet.autoAt < r.crashPoint && elapsed >= elapsedAt(bet.autoAt)) {
+          this.settleBet(bet, bet.autoAt);
+        }
         continue;
       }
-      if (bet.bot && bet.autoAt === null && elapsed < crashMs) {
+      if (bet.bot) {
         // Bots without a target sometimes cash a little after 1.2×.
         const target = 120 + (bet.amount % 80);
-        if (shown >= target) this.settleBet(bet, shown);
+        if (target < r.crashPoint && elapsed >= elapsedAt(target)) {
+          this.settleBet(bet, target);
+        }
       }
     }
   }

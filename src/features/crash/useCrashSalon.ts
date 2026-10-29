@@ -24,6 +24,7 @@ import {
   type CrashServerState,
 } from "@/lib/api/crash.api";
 import { env } from "@/lib/env";
+import { toUserError } from "@/lib/errors";
 import { playerIdentity } from "@/lib/playerSession";
 import { supabase } from "@/lib/supabase";
 import {
@@ -73,6 +74,7 @@ export function useCrashSalon({
 
   const viewRef = useRef<CrashView | null>(null);
   const offsetRef = useRef(0);
+  const hasOffsetSampleRef = useRef(false);
   const modeRef = useRef<"live" | "local">(env.isConfigured ? "live" : "local");
   const subscribedRef = useRef(false);
   const salonRef = useRef<CrashSalon | null>(null);
@@ -109,11 +111,16 @@ export function useCrashSalon({
   }, [publish]);
 
   const applyServer = useCallback(
-    (s: CrashServerState) => {
-      const sample = Date.parse(s.round.server_now) - Date.now();
+    (s: CrashServerState, rttMid: number = Date.now()) => {
+      const sample = Date.parse(s.round.server_now) - rttMid;
       if (Number.isFinite(sample)) {
-        // Light smoothing absorbs single-sample jitter without lagging the clock.
-        offsetRef.current = offsetRef.current * 0.55 + sample * 0.45;
+        if (!hasOffsetSampleRef.current) {
+          offsetRef.current = sample;
+          hasOffsetSampleRef.current = true;
+        } else {
+          // Light smoothing absorbs single-sample jitter without lagging the clock.
+          offsetRef.current = offsetRef.current * 0.55 + sample * 0.45;
+        }
       }
       modeRef.current = "live";
       publish(applyLocalTime(viewFromServer(s), Date.now() + offsetRef.current));
@@ -185,12 +192,24 @@ export function useCrashSalon({
       }
       if (inFlight) return;
       inFlight = true;
+      const t0 = Date.now();
       try {
-        const s = await crashGetState(playerIdentity.token());
+        const tok = playerIdentity.token();
+        let s: CrashServerState;
+        try {
+          s = await crashGetState(tok);
+        } catch (innerErr) {
+          if (tok && toUserError(innerErr).code === "PLAYER_UNAUTHORIZED") {
+            playerIdentity.clear();
+            s = await crashGetState(null);
+          } else {
+            throw innerErr;
+          }
+        }
         if (disposed) return;
         failures = 0;
         stopLocalTick();
-        applyServer(s);
+        applyServer(s, (t0 + Date.now()) / 2);
         const quick = missedWake;
         missedWake = false;
         schedule(quick ? 250 : s.round.phase === "flying" ? FLYING_POLL_MS : IDLE_POLL_MS);
@@ -316,8 +335,20 @@ export function useCrashSalon({
       return;
     }
     try {
-      const s = await crashGetState(playerIdentity.token());
-      applyServer(s);
+      const t0 = Date.now();
+      const tok = playerIdentity.token();
+      let s: CrashServerState;
+      try {
+        s = await crashGetState(tok);
+      } catch (innerErr) {
+        if (tok && toUserError(innerErr).code === "PLAYER_UNAUTHORIZED") {
+          playerIdentity.clear();
+          s = await crashGetState(null);
+        } else {
+          throw innerErr;
+        }
+      }
+      applyServer(s, (t0 + Date.now()) / 2);
     } catch {
       if (modeRef.current === "live") setLink("reconnecting");
     }

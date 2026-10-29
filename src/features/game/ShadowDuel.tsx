@@ -35,10 +35,18 @@ export interface ShadowDuelProps {
 interface DuelState {
   board: Board;
   turn: PlayerSymbol;
+  gameNumber: number;
+  finishedIso: string;
 }
 
-function initialDuel(): DuelState {
-  return { board: createInitialBoard(), turn: "X" };
+function initialDuel(gameNumber = 1): DuelState {
+  const startingTurn: PlayerSymbol = gameNumber % 2 === 1 ? "X" : "O";
+  return {
+    board: createInitialBoard(),
+    turn: startingTurn,
+    gameNumber,
+    finishedIso: new Date().toISOString(),
+  };
 }
 
 export function ShadowDuel({
@@ -49,7 +57,7 @@ export function ShadowDuel({
   onLeaveRoom,
 }: ShadowDuelProps) {
   const botSymbol = OTHER_SYMBOL[mySymbol];
-  const [duel, setDuel] = useState<DuelState>(initialDuel);
+  const [duel, setDuel] = useState<DuelState>(() => initialDuel(1));
   const [pendingCell, setPendingCell] = useState<number | null>(null);
   const thinkingTimeout = useRef<number | null>(null);
 
@@ -65,7 +73,12 @@ export function ShadowDuel({
   const handlePlay = (cell: number) => {
     if (!myTurn || duel.board[cell] !== null) return;
     const next = applyMove(duel.board, cell, mySymbol);
-    setDuel({ board: next, turn: OTHER_SYMBOL[mySymbol] });
+    setDuel((prev) => ({
+      ...prev,
+      board: next,
+      turn: OTHER_SYMBOL[mySymbol],
+      finishedIso: new Date().toISOString(),
+    }));
   };
 
   /* ------------------- hidden bot thinking with human delay --------------- */
@@ -79,8 +92,10 @@ export function ShadowDuel({
         const move = chooseBestMove(prev.board, botSymbol);
         if (!move) return prev;
         return {
+          ...prev,
           board: applyMove(prev.board, move.cell, botSymbol),
           turn: OTHER_SYMBOL[botSymbol],
+          finishedIso: new Date().toISOString(),
         };
       });
     }, delay);
@@ -105,9 +120,9 @@ export function ShadowDuel({
       is_draw: isDraw,
       winning_cells: winningCells,
       move_count: duel.board.filter((c) => c !== null).length,
-      game_number: 1,
+      game_number: duel.gameNumber,
       rematch_requested_by: null,
-      version: 1,
+      version: duel.gameNumber,
       settlement: null,
       forfeit: false,
       players: [
@@ -116,14 +131,16 @@ export function ShadowDuel({
       ],
       created_at: null,
       started_at: null,
-      finished_at: null,
+      finished_at: duel.finishedIso,
       expires_in_seconds: 0,
-      server_now: new Date().toISOString(),
+      server_now: duel.finishedIso,
     }),
     [
       roomCode,
       duel.board,
       duel.turn,
+      duel.gameNumber,
+      duel.finishedIso,
       win.winner,
       isDraw,
       winningCells,
@@ -135,7 +152,7 @@ export function ShadowDuel({
   );
 
   const rematch = () => {
-    setDuel(initialDuel());
+    setDuel((prev) => initialDuel(prev.gameNumber + 1));
     setPendingCell(null);
   };
 
@@ -176,7 +193,7 @@ export function ShadowDuel({
               ? "بازی مساوی تمام شد — دوباره بجنگید!"
               : win.winner === mySymbol
                 ? "پیروزی شما! 🎉"
-                : `${opponentName} برنده شد — ریکنجه کنید!`}
+                : `${opponentName} برنده شد — یک دست دیگر بازی کنید!`}
           </span>
         ) : myTurn ? (
           <span className="turn-line__text turn-line__text--me">

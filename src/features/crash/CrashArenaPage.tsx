@@ -559,7 +559,7 @@ export function CrashArenaPage() {
                   disabled={salon.busy}
                   onClick={() => void onCash(bet.id)}
                 >
-                  برداشت شط {toFaDigits(bet.slot + 1)}
+                  برداشت شرط {toFaDigits(bet.slot + 1)}
                   {shown !== null ? ` · ${faNum(payoutFor(bet.amount, shown))} sh` : ""}
                 </Button>
               ))}

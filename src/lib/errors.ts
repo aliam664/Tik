@@ -79,7 +79,21 @@ export type ServerErrorCode =
   | "INVALID_CODE_GUESS"
   | "ROUND_ALREADY_FINISHED"
   | "MAX_ATTEMPTS_REACHED"
-  | "WAITING_FOR_READY";
+  | "WAITING_FOR_READY"
+  | "BETTING_CLOSED"
+  | "INVALID_SLOT"
+  | "INVALID_AUTO_CASHOUT"
+  | "MAX_SLOTS"
+  | "SLOT_TAKEN"
+  | "NOT_FLYING"
+  | "BET_NOT_FOUND"
+  | "ALREADY_CASHED"
+  | "ALREADY_CRASHED"
+  | "ROUND_CLOSED"
+  | "INVALID_DICE_TARGET"
+  | "INVALID_DICE_SIDE"
+  | "BET_ALREADY_PLACED"
+  | "INVALID_SEED";
 
 export interface UserError {
   message: string;
@@ -187,6 +201,11 @@ export const ERROR_MESSAGES: Record<string, string> = {
   ROUND_ALREADY_FINISHED: "این راند به پایان رسیده و کد مخفی قبلاً کشف شده است.",
   MAX_ATTEMPTS_REACHED: "به سقف مجاز تلاش در این راند رسیده‌اید.",
   WAITING_FOR_READY: "هر دو بازیکن باید ابتدا آمادگی خود را در لابی تایید کنند.",
+  ROUND_CLOSED: "مهلت ثبت شرط این دور به پایان رسیده است.",
+  INVALID_DICE_TARGET: "عدد هدف انتخاب‌شده خارج از بازه مجاز است.",
+  INVALID_DICE_SIDE: "جهت شرط انتخاب‌شده معتبر نیست.",
+  BET_ALREADY_PLACED: "در این دور قبلاً شرط ثبت کرده‌اید.",
+  INVALID_SEED: "بذر رمزنگاری معتبر نیست.",
 };
 
 export const GENERIC_ERROR = "خطایی رخ داد. لطفاً دوباره تلاش کنید.";

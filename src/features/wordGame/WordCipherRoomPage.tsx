@@ -41,6 +41,8 @@ export function WordCipherRoomPage() {
     roomCode ? loadWordSession(roomCode) : null,
   );
   const [snapshot, setSnapshot] = useState<WordRoomStateResponse | null>(null);
+  const [shadowCtrl, setShadowCtrl] = useState<SoloWordGameController | null>(null);
+  const [shadowSnap, setShadowSnap] = useState<WordRoomStateResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -57,7 +59,21 @@ export function WordCipherRoomPage() {
   const inFlightActionRef = useRef(false);
   const latestVersionRef = useRef(0);
   const fetchGenRef = useRef(0);
+  const prevRoomCodeRef = useRef(roomCode);
   const playerToken = session?.playerToken ?? null;
+
+  useEffect(() => {
+    if (prevRoomCodeRef.current === roomCode) return;
+    prevRoomCodeRef.current = roomCode;
+    fetchGenRef.current += 1;
+    latestVersionRef.current = 0;
+    setSession(roomCode ? loadWordSession(roomCode) : null);
+    setSnapshot(null);
+    setErrorCode(null);
+    setLoading(Boolean(roomCode));
+    setShadowCtrl(null);
+    setShadowSnap(null);
+  }, [roomCode]);
 
   const fetchAuthenticatedState = useCallback(
     async (notify = false) => {
@@ -139,8 +155,6 @@ export function WordCipherRoomPage() {
       snapshot.state.players.length < snapshot.state.max_players,
   );
   const shadow = useShadowOpponent({ game: "word_cipher", armed: seatedAlone });
-  const [shadowCtrl, setShadowCtrl] = useState<SoloWordGameController | null>(null);
-  const [shadowSnap, setShadowSnap] = useState<WordRoomStateResponse | null>(null);
 
   useEffect(() => {
     if (!shadow.active) {
@@ -391,8 +405,10 @@ export function WordCipherRoomPage() {
                   wordCipherAudio.play("guess_correct");
                 } else if (res.evaluation?.outcome === "related") {
                   wordCipherAudio.play("guess_related");
-                } else {
+                } else if (res.evaluation?.outcome === "incorrect") {
                   wordCipherAudio.play("guess_wrong");
+                } else {
+                  wordCipherAudio.play("clue_sent");
                 }
                 setShadowSnap(res);
               } catch (err) {

@@ -89,6 +89,8 @@ export function viewFromServer(s: CrashServerState): CrashView {
     seed: h.seed,
     salt: h.salt,
   }));
+  const ascRows = [...rows].sort((a, b) => a.index - b.index);
+  const descRows = [...rows].sort((a, b) => b.index - a.index);
   return {
     mode: "live",
     round: {
@@ -114,8 +116,8 @@ export function viewFromServer(s: CrashServerState): CrashView {
         createdAt: parseTs(b.created_at) ?? 0,
       })),
       // oldest → newest, same order as the local salon
-      history: rows.map((h) => h.crashPoint),
-      historyRows: rows,
+      history: ascRows.map((h) => h.crashPoint),
+      historyRows: descRows,
     },
     // null until the player token has registered a wallet on this client
     balance: s.wallet?.balance ?? null,
@@ -203,8 +205,8 @@ export function applyLocalTime(view: CrashView, serverNow: number): CrashView {
 export function liveMultiplier(view: CrashView, now: number): number | null {
   const r = view.round;
   if (r.phase === "flying" && r.flyingStartedAt !== null) {
-    if (r.crashPoint !== null) return r.crashPoint;
-    return multiplierAt(now - r.flyingStartedAt);
+    const live = multiplierAt(Math.max(0, now - r.flyingStartedAt));
+    return r.crashPoint !== null ? Math.min(r.crashPoint, live) : live;
   }
   if (r.phase === "crashed") return r.crashPoint;
   return null;

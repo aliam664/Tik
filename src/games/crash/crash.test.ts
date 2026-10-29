@@ -78,19 +78,28 @@ describe("CrashSalon local engine", () => {
     expect(after.payout).toBeGreaterThan(50);
   });
 
-  it("burns the stake when the round busts before cash-out", () => {
+  it("burns the stake when the round busts before cash-out and never credits bot payouts to player", () => {
     const salon = new CrashSalon(200, 0);
     salon.placeBet(40, null, "آرش", 20);
     const start = salon.getState(20).balance;
+    expect(start).toBe(160);
     let later = salon.getState(20);
     for (let t = 8_000; t <= 400_000 && salon.getTelemetry().rounds === 0; t += 20_000) {
       later = salon.getState(t);
     }
     expect(["betting", "crashed", "flying"]).toContain(later.round.phase);
-    if (later.round.history.length > 0) {
-      expect(later.balance).toBeLessThanOrEqual(start + 500);
-    }
+    expect(later.balance).toBe(160);
     expect(salon.getTelemetry().rounds).toBeGreaterThan(0);
+  });
+
+  it("pays a winning auto-cashout even if advance() jumps past crash time in one step", () => {
+    let seed = randomSeed();
+    while (crashPoint(seed, "sheriff-blast:1") < 350) seed = randomSeed();
+    const salon = new CrashSalon(200, 0, seed);
+    salon.placeBet(50, 200, "آرش", 10);
+    // Jump directly from betting to well after crash
+    const crashed = salon.getState(5000 + elapsedAt(100_000_000));
+    expect(crashed.balance).toBe(200 - 50 + 100);
   });
 
   it("rejects NaN stakes and a second bet on the same slot", () => {

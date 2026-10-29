@@ -83,9 +83,9 @@ export const ROOM_JOIN_ADAPTERS: readonly RoomJoinAdapter[] = [
   },
   {
     id: "last_night",
-    async tryJoin(roomCode, displayName) {
+    async tryJoin(roomCode, displayName, profileToken) {
       try {
-        const res = await lastNightApi.joinRoom(roomCode, displayName);
+        const res = await lastNightApi.joinRoom(roomCode, displayName, profileToken ?? undefined);
         saveLnSession({
           roomCode: res.room_code,
           playerId: `${res.room_id}_s${res.seat}`,

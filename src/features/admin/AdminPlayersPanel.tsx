@@ -124,7 +124,10 @@ export function AdminPlayersPanel({
   const [busy, setBusy] = useState(false);
   const selectedRef = useRef<string | null>(null);
   const detailReqRef = useRef(0);
-  selectedRef.current = selected;
+
+  useEffect(() => {
+    selectedRef.current = selected;
+  }, [selected]);
 
   const load = useCallback(async () => {
     setLoading(true);

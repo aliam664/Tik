@@ -98,8 +98,13 @@ export function useRoomSession({ roomCode, onLeft }: UseRoomSessionOptions) {
   /** authoritative refetch (also acts as heartbeat when a token exists) */
   const refresh = useCallback(
     async (notify = false) => {
+      const latestToken = playerSession.getToken(roomCode);
+      if (latestToken !== tokenRef.current) {
+        tokenRef.current = latestToken;
+        setToken(latestToken);
+      }
       try {
-        const res = await api.getRoomState(roomCode, tokenRef.current, notify);
+        const res = await api.getRoomState(roomCode, latestToken, notify);
         applyResponse(res);
         setFatalError(null);
       } catch (err) {
@@ -116,6 +121,16 @@ export function useRoomSession({ roomCode, onLeft }: UseRoomSessionOptions) {
   /* -------------- initial load + realtime subscription -------------- */
   useEffect(() => {
     aliveRef.current = true;
+    versionRef.current = -1;
+    const storedToken = playerSession.getToken(roomCode);
+    tokenRef.current = storedToken;
+    setToken(storedToken);
+    setState(null);
+    setRole(null);
+    setFatalError(null);
+    setActionError(null);
+    setInitialLoading(true);
+    setRealtimeReady(false);
 
     void refresh(true).finally(() => {
       if (aliveRef.current) setInitialLoading(false);

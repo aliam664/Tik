@@ -162,6 +162,47 @@ describe("shared salon view (one chart for every client)", () => {
     }
   });
 
+  it("normalizes DESC server history into oldest→newest history and newest→oldest historyRows", () => {
+    const base = 1_800_000_000_000;
+    const s = serverState({
+      history: [
+        {
+          index: 41,
+          crash_point: 512,
+          crashed_at: iso(base - 1000),
+          seed_hash: "b1".repeat(32),
+          seed: "c1".repeat(32),
+          salt: "sheriff-blast:41",
+        },
+        {
+          index: 40,
+          crash_point: 185,
+          crashed_at: iso(base - 9000),
+          seed_hash: "b0".repeat(32),
+          seed: "c0".repeat(32),
+          salt: "sheriff-blast:40",
+        },
+        {
+          index: 39,
+          crash_point: 104,
+          crashed_at: iso(base - 18000),
+          seed_hash: "af".repeat(32),
+          seed: "cf".repeat(32),
+          salt: "sheriff-blast:39",
+        },
+      ],
+    });
+    const v = viewFromServer(s);
+    expect(v.round.history).toEqual([104, 185, 512]);
+    expect(v.round.historyRows.map((r) => r.index)).toEqual([41, 40, 39]);
+
+    const bettingFrame = frameFromView(v, base + 1000);
+    expect(bettingFrame.kind).toBe("betting");
+    if (bettingFrame.kind === "betting") {
+      expect(bettingFrame.lastCrash).toBe(512);
+    }
+  });
+
   it("falls back to the identical view shape from the local salon", () => {
     const salon = new CrashSalon(250, 1_800_000_000_000, "ab".repeat(32));
     const local = viewFromLocal(salon.getState(1_800_000_000_000));
@@ -170,13 +211,13 @@ describe("shared salon view (one chart for every client)", () => {
     expect(local.limits.minBet).toBe(10);
     expect(local.balance).toBe(250);
 
-    // shared flight math is identical in both modes
-    const t = 1_800_005_000 + 2400;
-    const flying = viewFromLocal(
-      salon.getState(t),
-    );
+    // shared flight math climbs smoothly even when local crashPoint is pre-populated
+    const t = 1_800_000_005_000 + 400;
+    const flying = viewFromLocal(salon.getState(t));
     if (flying.round.phase === "flying") {
-      expect(liveMultiplier(flying, t)).toBe(multiplierAt(2400));
+      expect(liveMultiplier(flying, t)).toBe(
+        Math.min(flying.round.crashPoint ?? Infinity, multiplierAt(400)),
+      );
     }
   });
 });

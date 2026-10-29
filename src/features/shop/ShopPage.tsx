@@ -44,8 +44,15 @@ export function ShopPage() {
       const list = await api.listShopItems();
       setItems(Array.isArray(list) ? list : []);
       if (token) {
-        const me = await api.getMyProfile(token);
-        setBalance(me.profile.balance);
+        try {
+          const me = await api.getMyProfile(token);
+          setBalance(me.profile.balance);
+        } catch (profileErr) {
+          if (toUserError(profileErr).code === "PLAYER_UNAUTHORIZED") {
+            playerIdentity.clear();
+          }
+          setBalance(null);
+        }
       }
       setError(null);
     } catch (err) {

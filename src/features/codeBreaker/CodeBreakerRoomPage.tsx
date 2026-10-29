@@ -31,6 +31,8 @@ export function CodeBreakerRoomPage() {
     roomCode ? loadCodeBreakerSession(roomCode) : null,
   );
   const [snapshot, setSnapshot] = useState<CodeBreakerStateResponse | null>(null);
+  const [shadowCtrl, setShadowCtrl] = useState<SoloCodeBreakerController | null>(null);
+  const [shadowSnap, setShadowSnap] = useState<CodeBreakerStateResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -39,7 +41,20 @@ export function CodeBreakerRoomPage() {
 
   const inFlightRef = useRef(false);
   const fetchGenRef = useRef(0);
+  const prevRoomCodeRef = useRef(roomCode);
   const playerToken = session?.playerToken ?? null;
+
+  useEffect(() => {
+    if (prevRoomCodeRef.current === roomCode) return;
+    prevRoomCodeRef.current = roomCode;
+    fetchGenRef.current += 1;
+    setSession(roomCode ? loadCodeBreakerSession(roomCode) : null);
+    setSnapshot(null);
+    setErrorMsg(null);
+    setLoading(Boolean(roomCode));
+    setShadowCtrl(null);
+    setShadowSnap(null);
+  }, [roomCode]);
 
   useEffect(() => {
     if (profile?.display_name && !directJoinName) {
@@ -122,8 +137,6 @@ export function CodeBreakerRoomPage() {
       snapshot.state.players.length < snapshot.state.max_players,
   );
   const shadow = useShadowOpponent({ game: "code_breaker", armed: seatedAlone });
-  const [shadowCtrl, setShadowCtrl] = useState<SoloCodeBreakerController | null>(null);
-  const [shadowSnap, setShadowSnap] = useState<CodeBreakerStateResponse | null>(null);
 
   useEffect(() => {
     if (!shadow.active) {
@@ -134,7 +147,7 @@ export function CodeBreakerRoomPage() {
     if (shadowCtrl) return;
     const ctrl = new SoloCodeBreakerController(
       session?.displayName ?? directJoinName ?? "شما",
-      null,
+      snapshot?.state.max_attempts_per_player ?? null,
       undefined,
       { opponentName: shadow.name, roomCode },
     );
@@ -147,6 +160,7 @@ export function CodeBreakerRoomPage() {
     shadowCtrl,
     session?.displayName,
     directJoinName,
+    snapshot?.state.max_attempts_per_player,
     roomCode,
   ]);
 
@@ -298,7 +312,7 @@ export function CodeBreakerRoomPage() {
 
   // Direct link visitor without seat token -> seamless 1-step join!
   if (!session?.playerToken || snapshot.seat === null) {
-    if (state.players.length < state.max_players) {
+    if (state.status === "waiting" && state.players.length < state.max_players) {
       return (
         <div className="container" style={{ paddingBlock: "2.5rem", maxWidth: 540 }}>
           <Card className="stack stack--md">
@@ -361,7 +375,10 @@ export function CodeBreakerRoomPage() {
                 return false;
               }
             },
-            onRematch: () => setShadowSnap(shadowCtrl.rematch()),
+            onRematch: () => {
+              shadowCtrl.rematch();
+              setShadowSnap(shadowCtrl.setReady(true));
+            },
             onLeave: handleLeave,
           }}
         />
@@ -374,6 +391,7 @@ export function CodeBreakerRoomPage() {
       <CodeBreakerArenaView
         snapshot={snapshot}
         busy={busy}
+        searching={shadow.searching}
         onCopyInvite={handleCopyInvite}
         actions={{
           onSetReady: (ready) =>
