@@ -1,11 +1,13 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./app/App";
+import "@fontsource-variable/space-grotesk/index.css";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/animations.css";
 import "./styles/components.css";
 import "./styles/pages.css";
+import "./styles/home.css";
 import "./styles/economy.css";
 import "./styles/word-game.css";
 import "./styles/code-breaker.css";
