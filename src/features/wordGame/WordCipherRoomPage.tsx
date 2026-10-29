@@ -8,11 +8,13 @@ import {
   saveWordSession,
   type StoredWordRoomSession,
 } from "@/games/wordGame/session";
+import { SoloWordGameController } from "@/games/wordGame/soloEngine";
 import { wordCipherAudio } from "@/games/wordGame/sound";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useEconomyProfile } from "@/hooks/useEconomyProfile";
 import { wordGameApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
+import { useShadowOpponent } from "@/lib/shadowOpponent";
 import { supabase } from "@/lib/supabase";
 import type { WordRoomStateResponse } from "@/types/wordGame";
 import { WordCipherArenaView } from "./WordCipherArenaView";
@@ -39,6 +41,8 @@ export function WordCipherRoomPage() {
     roomCode ? loadWordSession(roomCode) : null,
   );
   const [snapshot, setSnapshot] = useState<WordRoomStateResponse | null>(null);
+  const [shadowCtrl, setShadowCtrl] = useState<SoloWordGameController | null>(null);
+  const [shadowSnap, setShadowSnap] = useState<WordRoomStateResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -55,7 +59,21 @@ export function WordCipherRoomPage() {
   const inFlightActionRef = useRef(false);
   const latestVersionRef = useRef(0);
   const fetchGenRef = useRef(0);
+  const prevRoomCodeRef = useRef(roomCode);
   const playerToken = session?.playerToken ?? null;
+
+  useEffect(() => {
+    if (prevRoomCodeRef.current === roomCode) return;
+    prevRoomCodeRef.current = roomCode;
+    fetchGenRef.current += 1;
+    latestVersionRef.current = 0;
+    setSession(roomCode ? loadWordSession(roomCode) : null);
+    setSnapshot(null);
+    setErrorCode(null);
+    setLoading(Boolean(roomCode));
+    setShadowCtrl(null);
+    setShadowSnap(null);
+  }, [roomCode]);
 
   const fetchAuthenticatedState = useCallback(
     async (notify = false) => {
@@ -125,6 +143,42 @@ export function WordCipherRoomPage() {
       window.clearInterval(pollId);
     };
   }, [roomCode, fetchAuthenticatedState]);
+
+  /* ----------------------- hidden shadow opponent ----------------------- */
+  // If the seated player waits alone, a human-like bot quietly takes seat 2
+  // and a full two-player duel runs locally (presented as a live room match).
+  const seatedAlone = Boolean(
+    session?.playerToken &&
+      snapshot &&
+      snapshot.seat !== null &&
+      snapshot.state.status === "waiting" &&
+      snapshot.state.players.length < snapshot.state.max_players,
+  );
+  const shadow = useShadowOpponent({ game: "word_cipher", armed: seatedAlone });
+
+  useEffect(() => {
+    if (!shadow.active) {
+      setShadowCtrl(null);
+      setShadowSnap(null);
+      return;
+    }
+    if (shadowCtrl) return;
+    const ctrl = new SoloWordGameController(
+      session?.displayName ?? directJoinName ?? "شما",
+      { ...(snapshot?.state.rules ?? {}), roundTimerSeconds: 0 },
+      { opponentName: shadow.name, roomCode },
+    );
+    setShadowCtrl(ctrl);
+    setShadowSnap(ctrl.getPublicSnapshot());
+  }, [
+    shadow.active,
+    shadow.name,
+    shadowCtrl,
+    session?.displayName,
+    snapshot?.state.rules,
+    directJoinName,
+    roomCode,
+  ]);
 
   const runAction = async (fn: () => Promise<WordRoomStateResponse>): Promise<boolean> => {
     if (inFlightActionRef.current) return false;
@@ -327,6 +381,83 @@ export function WordCipherRoomPage() {
           );
   }
 
+  // Hidden shadow match: the bot has taken seat 2 — run the full duel locally,
+  // presented exactly like the live room (real room code, human persona).
+  if (shadow.active && shadowCtrl && shadowSnap) {
+    return (
+      <div className="container wg-arena" style={{ paddingBlock: "1.5rem" }}>
+        <WordCipherArenaView
+          snapshot={shadowSnap}
+          isSolo={false}
+          busy={busy}
+          actions={{
+            onSelectTarget: (wordId) => {
+              try {
+                setShadowSnap(shadowCtrl.selectTargetCard(wordId));
+              } catch (err) {
+                show(getErrorMessage(err), "error");
+              }
+            },
+            onSubmitClue: (clueText, kind) => {
+              try {
+                const res = shadowCtrl.submitHumanClue(clueText, kind);
+                if (res.evaluation?.outcome === "correct") {
+                  wordCipherAudio.play("guess_correct");
+                } else if (res.evaluation?.outcome === "related") {
+                  wordCipherAudio.play("guess_related");
+                } else if (res.evaluation?.outcome === "incorrect") {
+                  wordCipherAudio.play("guess_wrong");
+                } else {
+                  wordCipherAudio.play("clue_sent");
+                }
+                setShadowSnap(res);
+              } catch (err) {
+                show(getErrorMessage(err), "error");
+              }
+            },
+            onRequestHint: () => {
+              try {
+                setShadowSnap(shadowCtrl.requestExtraHint());
+              } catch (err) {
+                show(getErrorMessage(err), "error");
+              }
+            },
+            onSubmitGuess: (guessText) => {
+              try {
+                const res = shadowCtrl.submitHumanGuess(guessText);
+                if (res.evaluation?.outcome === "correct") {
+                  wordCipherAudio.play("guess_correct");
+                } else if (res.evaluation?.outcome === "related") {
+                  wordCipherAudio.play("guess_related");
+                } else {
+                  wordCipherAudio.play("guess_wrong");
+                }
+                setShadowSnap(res);
+                return true;
+              } catch (err) {
+                show(getErrorMessage(err), "error");
+                return false;
+              }
+            },
+            onNextRound: () => {
+              const res = shadowCtrl.nextRound();
+              if (res.state.status === "finished") {
+                wordCipherAudio.play("match_victory");
+              }
+              setShadowSnap(res);
+            },
+            onRematch: () => {
+              wordCipherAudio.play("card_select");
+              setShadowSnap(shadowCtrl.rematch());
+            },
+            onLeave: handleLeave,
+            onTimerExpired: () => setShadowSnap(shadowCtrl.getPublicSnapshot()),
+          }}
+        />
+      </div>
+    );
+  }
+
   if (state.status === "waiting") {
     return (
               <div className="container stack stack--lg" style={{ paddingBlock: "2rem", maxWidth: 740 }}>
@@ -335,6 +466,16 @@ export function WordCipherRoomPage() {
               <Badge tone="gold">در انتظار بازیکن دوم (۱ از ۲ حاضر)</Badge>
               <Badge tone="info">{state.total_rounds} راند · چرخش نقش خودکار</Badge>
             </div>
+            {shadow.searching ? (
+              <p className="room-search-line" role="status">
+                <span className="room-search-line__dots" aria-hidden="true">
+                  <i />
+                  <i />
+                  <i />
+                </span>
+                در حال جستجوی حریف مناسب…
+              </p>
+            ) : null}
 
             <div style={{ textAlign: "center", paddingBlock: "1rem" }}>
               <span className="muted" style={{ display: "block", marginBottom: 8 }}>

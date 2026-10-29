@@ -79,7 +79,21 @@ export type ServerErrorCode =
   | "INVALID_CODE_GUESS"
   | "ROUND_ALREADY_FINISHED"
   | "MAX_ATTEMPTS_REACHED"
-  | "WAITING_FOR_READY";
+  | "WAITING_FOR_READY"
+  | "BETTING_CLOSED"
+  | "INVALID_SLOT"
+  | "INVALID_AUTO_CASHOUT"
+  | "MAX_SLOTS"
+  | "SLOT_TAKEN"
+  | "NOT_FLYING"
+  | "BET_NOT_FOUND"
+  | "ALREADY_CASHED"
+  | "ALREADY_CRASHED"
+  | "ROUND_CLOSED"
+  | "INVALID_DICE_TARGET"
+  | "INVALID_DICE_SIDE"
+  | "BET_ALREADY_PLACED"
+  | "INVALID_SEED";
 
 export interface UserError {
   message: string;
@@ -132,6 +146,15 @@ export const ERROR_MESSAGES: Record<string, string> = {
   STAKES_REQUIRE_GAMES: "برای بازی شرطی باید ابتدا حداقل ۲۰ بازی رنکد انجام دهید.",
   STAKES_REQUIRE_TIER: "برای بازی شرطی باید به تیر نقره یا بالاتر برسید.",
   INVALID_STAKE: "مبلغ ورودی شرط معتبر نیست.",
+  INVALID_SLOT: "جایگاه شرط انتخاب‌شده معتبر نیست.",
+  INVALID_AUTO_CASHOUT: "ضریب خروج خودکار باید دست‌کم ۱.۰۱× باشد.",
+  BETTING_CLOSED: "پنجرهٔ شرط این راند بسته شده؛ راند بعدی را ببند.",
+  MAX_SLOTS: "حداکثر دو شرط هم‌زمان در هر راند.",
+  SLOT_TAKEN: "این جایگاه قبلاً پر شده.",
+  ALREADY_CASHED: "این شرط قبلاً برداشت شده.",
+  ALREADY_CRASHED: "انفجار زودتر رخ داد.",
+  NOT_FLYING: "الان در حال پرواز نیست.",
+  BET_NOT_FOUND: "شرط موردنظر پیدا نشد؛ صفحه را تازه‌سازی کنید.",
   STAKE_TOO_HIGH: "سقف ورودی شرط برای تیر فعلی شما کمتر است.",
   DAILY_LOSS_CAP: "به سقف باخت روزانه شرط رسیده‌اید؛ فردا دوباره تلاش کنید.",
   QUEUE_BANNED: "دسترسی شما به صف مسابقه موقتاً مسدود است.",
@@ -178,6 +201,11 @@ export const ERROR_MESSAGES: Record<string, string> = {
   ROUND_ALREADY_FINISHED: "این راند به پایان رسیده و کد مخفی قبلاً کشف شده است.",
   MAX_ATTEMPTS_REACHED: "به سقف مجاز تلاش در این راند رسیده‌اید.",
   WAITING_FOR_READY: "هر دو بازیکن باید ابتدا آمادگی خود را در لابی تایید کنند.",
+  ROUND_CLOSED: "مهلت ثبت شرط این دور به پایان رسیده است.",
+  INVALID_DICE_TARGET: "عدد هدف انتخاب‌شده خارج از بازه مجاز است.",
+  INVALID_DICE_SIDE: "جهت شرط انتخاب‌شده معتبر نیست.",
+  BET_ALREADY_PLACED: "در این دور قبلاً شرط ثبت کرده‌اید.",
+  INVALID_SEED: "بذر رمزنگاری معتبر نیست.",
 };
 
 export const GENERIC_ERROR = "خطایی رخ داد. لطفاً دوباره تلاش کنید.";

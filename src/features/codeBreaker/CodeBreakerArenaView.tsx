@@ -24,6 +24,7 @@ interface CodeBreakerArenaViewProps {
   snapshot: CodeBreakerStateResponse;
   isSolo?: boolean;
   busy?: boolean;
+  searching?: boolean;
   onCopyInvite?: () => void;
   actions: CodeBreakerArenaActions;
 }
@@ -111,6 +112,7 @@ export function CodeBreakerArenaView({
   snapshot,
   isSolo = false,
   busy = false,
+  searching = false,
   onCopyInvite,
   actions,
 }: CodeBreakerArenaViewProps) {
@@ -308,6 +310,16 @@ export function CodeBreakerArenaView({
               <p className="muted" style={{ margin: 0 }}>
                 تولید کد مخفی ۴ رقمی روی سرور و شروع تایمر راند <strong>دقیقاً در لحظه‌ای</strong> انجام می‌شود که هر دو بازیکن آمادگی خود را تایید کنند.
               </p>
+              {searching && !bothJoined ? (
+                <p className="room-search-line" role="status" style={{ margin: 0 }}>
+                  <span className="room-search-line__dots" aria-hidden="true">
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                  در حال جستجوی حریف مناسب…
+                </p>
+              ) : null}
             </div>
             <div className="row row--xs row--wrap">
               {onCopyInvite && (

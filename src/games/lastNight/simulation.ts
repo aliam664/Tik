@@ -340,6 +340,8 @@ export interface SimEnemy {
   burnTickAccum: number;
   attackCooldownSec: number;
   hitFlashSec: number;
+  /** Elite (نخبه) mini-champion: bigger, tougher, worth more Sheriff Coin. */
+  elite?: boolean;
   /** Boss-specific fields */
   bossPhase?: 1 | 2 | 3;
   patternCooldownSec?: number;
@@ -402,6 +404,18 @@ export interface SimLightningArc {
   ttlSec: number;
 }
 
+/** Lightweight visual particle (sparks, death poofs, impacts) owned by the sim loop. */
+export interface SimParticle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  lifeSec: number;
+  maxLifeSec: number;
+  color: string;
+  size: number;
+}
+
 export interface SimTelegraphZone {
   id: string;
   kind: "circle" | "line";
@@ -446,6 +460,57 @@ const WAVE_ENEMY_POOLS: Record<number, MedievalEnemyKind[]> = {
   10: ["undead_knight", "stone_giant", "dark_sorcerer", "wandering_spirit"],
 };
 
+/** Elite (نخبه) mini-champions start appearing on Wave 4: every 6th roster slot. */
+export const ELITE_FIRST_WAVE = 4;
+const ELITE_SLOT_STRIDE = 6;
+/** Elite stat multipliers — tougher, bigger, and worth more Sheriff Coin. */
+export const ELITE_HP_MULT = 1.65;
+export const ELITE_DAMAGE_MULT = 1.3;
+export const ELITE_RADIUS_MULT = 1.28;
+export const ELITE_SPEED_MULT = 1.08;
+export const ELITE_REWARD_MULT = 1.6;
+
+/** Deterministic elite assignment for a roster slot (never the boss slot). */
+export function isEliteWaveSlot(wave: number, index: number): boolean {
+  const clampedWave = Math.max(1, Math.min(10, Math.floor(wave)));
+  if (clampedWave < ELITE_FIRST_WAVE) return false;
+  if (index < 0) return false;
+  return index % ELITE_SLOT_STRIDE === ELITE_SLOT_STRIDE - 1;
+}
+
+export interface WaveRosterInfo {
+  /** Total enemies incl. the boss when the wave has one. */
+  total: number;
+  /** Regular (non-boss) roster size. */
+  count: number;
+  hasBoss: boolean;
+  elites: number;
+}
+
+/** Roster summary used by the HUD wave-progress readout (mirrors createWaveEnemies). */
+export function getWaveRosterInfo(wave: number): WaveRosterInfo {
+  const clampedWave = Math.max(1, Math.min(10, Math.floor(wave)));
+  const count = 7 + clampedWave * 2;
+  const hasBoss = getBossForWave(clampedWave) != null;
+  let elites = 0;
+  for (let i = 0; i < count; i++) {
+    if (isEliteWaveSlot(clampedWave, i)) elites += 1;
+  }
+  return { total: count + (hasBoss ? 1 : 0), count, hasBoss, elites };
+}
+
+/**
+ * Coin bonus percent for consecutive kills without letting the streak timer
+ * (3.4s per kill) expire. Starts at 3 kills (+10%) and caps at +30%.
+ */
+export function computeStreakBonusPct(streak: number): number {
+  if (!Number.isFinite(streak) || streak < 3) return 0;
+  return Math.min(30, Math.round((streak - 2) * 10));
+}
+
+/** Seconds a kill refreshes the streak window for. */
+export const STREAK_WINDOW_SEC = 3.4;
+
 export function createWaveEnemies(wave: number): SimEnemy[] {
   const clampedWave = Math.max(1, Math.min(10, wave));
   const pool = WAVE_ENEMY_POOLS[clampedWave] ?? WAVE_ENEMY_POOLS[1];
@@ -473,9 +538,10 @@ export function createWaveEnemies(wave: number): SimEnemy[] {
 
     const hpScale = 1 + (clampedWave - 1) * 0.1;
     const scaledHp = Math.round(spec.maxHp * hpScale);
+    const elite = isEliteWaveSlot(clampedWave, i);
 
     enemies.push({
-      id: `w${clampedWave}_e${i}_${kind}`,
+      id: `w${clampedWave}_e${i}_${kind}${elite ? "_elite" : ""}`,
       kind,
       nameFa: spec.nameFa,
       nameEn: spec.nameEn,
@@ -484,12 +550,14 @@ export function createWaveEnemies(wave: number): SimEnemy[] {
       y,
       vx: 0,
       vy: 0,
-      hp: scaledHp,
-      maxHp: scaledHp,
-      damage: spec.damage,
-      speed: spec.speed,
-      radius: spec.radius,
-      rewardCoins: spec.rewardCoins,
+      hp: elite ? Math.round(scaledHp * ELITE_HP_MULT) : scaledHp,
+      maxHp: elite ? Math.round(scaledHp * ELITE_HP_MULT) : scaledHp,
+      damage: elite ? Math.round(spec.damage * ELITE_DAMAGE_MULT) : spec.damage,
+      speed: elite ? Math.round(spec.speed * ELITE_SPEED_MULT) : spec.speed,
+      radius: elite ? Math.round(spec.radius * ELITE_RADIUS_MULT) : spec.radius,
+      rewardCoins: elite
+        ? Math.round(spec.rewardCoins * ELITE_REWARD_MULT)
+        : spec.rewardCoins,
       color: spec.color,
       accentColor: spec.accentColor,
       ranged: Boolean(spec.ranged),
@@ -503,6 +571,7 @@ export function createWaveEnemies(wave: number): SimEnemy[] {
       burnTickAccum: 0,
       attackCooldownSec: 0.6 + (i % 3) * 0.25,
       hitFlashSec: 0,
+      elite,
     });
   }
 

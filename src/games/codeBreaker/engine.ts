@@ -319,14 +319,23 @@ export class SoloCodeBreakerController {
   private pastRounds: CodeBreakerPastRoundSummary[] = [];
   private candidatePool: string[] = [];
   private version = 1;
+  private shadowRoomCode: string | null = null;
 
   constructor(
     humanName: string,
     maxAttemptsPerPlayer: number | null = null,
     fixedSecretForTest?: string,
+    /**
+     * Shadow-opponent presentation overrides used by the hidden bot system:
+     * seat 2 shows a human persona and the snapshot advertises the REAL room
+     * code, making the duel indistinguishable from a live online match.
+     */
+    shadowOptions?: { opponentName?: string; roomCode?: string },
   ) {
     this.maxAttemptsPerPlayer = maxAttemptsPerPlayer;
     this.nextSecretOverride = fixedSecretForTest;
+    const persona = shadowOptions?.opponentName?.trim();
+    this.shadowRoomCode = shadowOptions?.roomCode?.trim() || null;
     this.players = [
       {
         seat: 1,
@@ -338,7 +347,7 @@ export class SoloCodeBreakerController {
       },
       {
         seat: 2,
-        name: "واحد رمزگشای AI",
+        name: persona || "واحد رمزگشای AI",
         connected: true,
         is_ready: true,
         wins: 0,
@@ -347,6 +356,7 @@ export class SoloCodeBreakerController {
     ];
     this.resetAiCandidates();
   }
+
 
   private resetAiCandidates(): void {
     this.candidatePool = [];
@@ -534,11 +544,11 @@ export class SoloCodeBreakerController {
         : null;
 
     return {
-      room_code: "SOLOAI",
+      room_code: this.shadowRoomCode ?? "SOLOAI",
       seat: 1,
       state: {
         room_id: "solo_room",
-        room_code: "SOLOAI",
+        room_code: this.shadowRoomCode ?? "SOLOAI",
         status: this.status,
         version: this.version,
         current_round: this.currentRound,

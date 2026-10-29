@@ -230,6 +230,7 @@ export interface AuditRow {
 export interface AdminCrashOps {
   ok: boolean;
   source: string;
+  server_now?: string;
   round: Record<string, unknown> | null;
   kpis: {
     rounds_total: number;

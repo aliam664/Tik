@@ -22,10 +22,14 @@ import {
   applyFrostEffect,
   calculateIncomingDamage,
   calculateMeleeDamage,
+  computeStreakBonusPct,
   createMapInteractables,
   createWaveEnemies,
+  ELITE_HP_MULT,
   findNearestEnemy,
   getBossPhase,
+  getWaveRosterInfo,
+  isEliteWaveSlot,
   resolveEnemySeparation,
   resolveLandmarkCollisions,
   spawnMinionEnemy,
@@ -323,5 +327,67 @@ describe("Last Night — Medieval Survival Rules & Simulation", () => {
 
     const nearest = findNearestEnemy(390, 390, list, 300);
     expect(nearest).not.toBeNull();
+  });
+});
+
+describe("Last Night — Elite Enemies, Wave Progress & Kill Streaks", () => {
+  it("never spawns elites before Wave 4 and marks every 6th roster slot from Wave 4 on", () => {
+    for (let wave = 1; wave <= 3; wave += 1) {
+      expect(createWaveEnemies(wave).some((e) => e.elite)).toBe(false);
+      expect(isEliteWaveSlot(wave, 5)).toBe(false);
+    }
+
+    for (let wave = 4; wave <= 10; wave += 1) {
+      const enemies = createWaveEnemies(wave);
+      const regular = enemies.filter((e) => !e.isBoss);
+      const elites = regular.filter((e) => e.elite);
+      expect(elites.length).toBeGreaterThan(0);
+      // Elite assignment must match the deterministic slot rule exactly.
+      regular.forEach((enemy, idx) => {
+        expect(Boolean(enemy.elite)).toBe(isEliteWaveSlot(wave, idx));
+      });
+      // Bosses are never elites.
+      expect(enemies.filter((e) => e.isBoss).some((e) => e.elite)).toBe(false);
+    }
+  });
+
+  it("makes elites tougher, deadlier, bigger, and worth more Sheriff Coin", () => {
+    const wave = 6;
+    const enemies = createWaveEnemies(wave);
+    const elite = enemies.find((e) => e.elite);
+    expect(elite).toBeDefined();
+    const baseSpec = MEDIEVAL_ENEMIES.find((spec) => spec.kind === elite!.kind);
+    expect(baseSpec).toBeDefined();
+    if (!baseSpec || !elite) return;
+
+    const waveScale = 1 + (wave - 1) * 0.1;
+    expect(elite.maxHp).toBe(Math.round(Math.round(baseSpec.maxHp * waveScale) * ELITE_HP_MULT));
+    expect(elite.damage).toBeGreaterThanOrEqual(Math.round(baseSpec.damage * 1.3));
+    expect(elite.radius).toBeGreaterThan(baseSpec.radius);
+    expect(elite.rewardCoins).toBeGreaterThan(baseSpec.rewardCoins);
+    expect(elite.hp).toBe(elite.maxHp);
+  });
+
+  it("keeps getWaveRosterInfo totals in sync with createWaveEnemies for all 10 waves", () => {
+    for (let wave = 1; wave <= 10; wave += 1) {
+      const info = getWaveRosterInfo(wave);
+      const enemies = createWaveEnemies(wave);
+      expect(info.total).toBe(enemies.length);
+      expect(info.count).toBe(7 + wave * 2);
+      expect(info.hasBoss).toBe(getBossForWave(wave) != null);
+      expect(info.elites).toBe(enemies.filter((e) => e.elite).length);
+    }
+  });
+
+  it("scales the consecutive-kill coin bonus from +10% at 3 kills up to a +30% cap", () => {
+    expect(computeStreakBonusPct(0)).toBe(0);
+    expect(computeStreakBonusPct(1)).toBe(0);
+    expect(computeStreakBonusPct(2)).toBe(0);
+    expect(computeStreakBonusPct(3)).toBe(10);
+    expect(computeStreakBonusPct(4)).toBe(20);
+    expect(computeStreakBonusPct(5)).toBe(30);
+    expect(computeStreakBonusPct(8)).toBe(30);
+    expect(computeStreakBonusPct(999)).toBe(30);
+    expect(computeStreakBonusPct(Number.NaN)).toBe(0);
   });
 });

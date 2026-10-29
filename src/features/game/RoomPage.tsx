@@ -18,7 +18,9 @@ import { api } from "@/lib/api";
 import { toUserError } from "@/lib/errors";
 import { displayNameError } from "@/lib/format";
 import { normalizeRoomCode, playerSession } from "@/lib/session";
+import { useShadowOpponent } from "@/lib/shadowOpponent";
 import { OTHER_SYMBOL, type PlayerSymbol } from "@/game/engine";
+import { ShadowDuel } from "./ShadowDuel";
 
 export function RoomPage() {
   const params = useParams<{ roomCode: string }>();
@@ -36,6 +38,21 @@ export function RoomPage() {
   const onLeft = useCallback(() => navigate("/", { replace: true }), [navigate]);
 
   const session = useRoomSession({ roomCode: roomCode ?? "", onLeft });
+
+  // Hidden shadow opponent: if nobody joins a friendly room, a human-like bot
+  // is quietly seated after a short randomized delay so the duel always happens.
+  // Stakes/ranked rooms stay honest and keep waiting for a real opponent.
+  const shadow = useShadowOpponent({
+    game: "doz",
+    armed: Boolean(
+      session.role &&
+        session.state &&
+        session.state.status === "waiting" &&
+        session.state.mode === "friendly" &&
+        session.state.players.length < 2 &&
+        session.connection !== "offline",
+    ),
+  });
 
   if (!roomCode) {
     return (
@@ -183,6 +200,21 @@ export function RoomPage() {
   const isMyTurn = state.status === "active" && state.current_turn === mySymbol;
   const interactive = state.status === "active" && isMyTurn && session.connection !== "offline";
 
+  // Shadow duel takes over once the hidden opponent has taken the empty seat.
+  if (shadow.active && state.status === "waiting") {
+    return (
+      <RoomFrame state={state} session={session}>
+        <ShadowDuel
+          roomCode={state.room_code}
+          mySymbol={mySymbol}
+          myName={me?.name ?? "شما"}
+          opponentName={shadow.name}
+          onLeaveRoom={() => void session.leave()}
+        />
+      </RoomFrame>
+    );
+  }
+
   return (
     <RoomFrame state={state} session={session}>
       {state.mode !== "friendly" ? (
@@ -226,6 +258,16 @@ export function RoomPage() {
                 : "به‌محض آماده‌شدن حریف، بازی شروع می‌شود."
               : "این کد را برای دوستتان بفرستید. به‌محض ورود او، بازی شروع می‌شود."}
           </p>
+          {shadow.searching ? (
+            <p className="room-search-line" role="status">
+              <span className="room-search-line__dots" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+              </span>
+              در حال جستجوی حریف مناسب…
+            </p>
+          ) : null}
           {opponent ? null : (
             <div className="invite-card__code">
               <RoomCodeDisplay code={state.room_code} size="lg" />

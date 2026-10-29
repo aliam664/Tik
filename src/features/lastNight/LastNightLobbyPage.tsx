@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   MAGIC_BOOKS,
@@ -22,6 +22,13 @@ export function LastNightLobbyPage() {
   const [displayName, setDisplayName] = useState(
     () => profile?.display_name ?? "شوالیه شب",
   );
+  const [nameEdited, setNameEdited] = useState(false);
+
+  useEffect(() => {
+    if (profile?.display_name && !nameEdited) {
+      setDisplayName(profile.display_name);
+    }
+  }, [profile?.display_name, nameEdited]);
   const [joinCode, setJoinCode] = useState("");
   const [busyAction, setBusyAction] = useState<"create" | "join" | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -146,7 +153,10 @@ export function LastNightLobbyPage() {
               type="text"
               className="input"
               value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
+              onChange={(e) => {
+                setNameEdited(true);
+                setDisplayName(e.target.value);
+              }}
               maxLength={24}
               placeholder="نام شوالیه..."
             />
@@ -177,9 +187,11 @@ export function LastNightLobbyPage() {
               dir="ltr"
               className="input"
               value={joinCode}
-              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+              onChange={(e) =>
+                setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z2-9]/gi, "").slice(0, 6))
+              }
               maxLength={8}
-              placeholder="مثال: AB12CD"
+              placeholder="مثال: AB23CD"
             />
           </div>
           <button

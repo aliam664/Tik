@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -6,8 +6,10 @@ import { FormField, Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { ROOM_JOIN_ADAPTERS } from "@/games/joinAdapters";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { useEconomyProfile } from "@/hooks/useEconomyProfile";
 import { toUserError } from "@/lib/errors";
 import { displayNameError, roomCodeError } from "@/lib/format";
+import { playerIdentity } from "@/lib/playerSession";
 import { normalizeRoomCode } from "@/lib/session";
 
 export function JoinRoomPage() {
@@ -15,12 +17,20 @@ export function JoinRoomPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [searchParams] = useSearchParams();
+  const { profile, token: profileToken } = useEconomyProfile();
 
   const [code, setCode] = useState(() => normalizeRoomCode(searchParams.get("code")) ?? "");
-  const [name, setName] = useState("");
+  const [name, setName] = useState(() => profile?.display_name ?? "");
+  const [nameEdited, setNameEdited] = useState(false);
   const [codeError, setCodeError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (profile?.display_name && !nameEdited && !name) {
+      setName(profile.display_name);
+    }
+  }, [profile?.display_name, nameEdited, name]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,8 +44,9 @@ export function JoinRoomPage() {
     const cleanName = name.trim();
     setSubmitting(true);
     try {
+      const effectiveToken = profileToken ?? playerIdentity.token();
       for (const adapter of ROOM_JOIN_ADAPTERS) {
-        const result = await adapter.tryJoin(normalized, cleanName);
+        const result = await adapter.tryJoin(normalized, cleanName, effectiveToken);
         if (result === "not_found") continue;
         navigate(result.roomPath, { replace: true });
         return;
@@ -83,7 +94,10 @@ export function JoinRoomPage() {
             <Input
               id="join-name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setNameEdited(true);
+                setName(e.target.value);
+              }}
               placeholder="مثلاً: سارا"
               maxLength={24}
               autoComplete="off"

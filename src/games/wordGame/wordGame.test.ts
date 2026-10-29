@@ -141,3 +141,28 @@ describe("Scoring, Role Rotation & Zero-Leak Round State Machine", () => {
     expect(afterPick.state.round?.target_word).toBe(chosenCard.word);
   });
 });
+
+describe("Shadow Opponent presentation overrides (hidden bot matchmaking)", () => {
+  it("keeps the default AI practice persona and SOLO-AI code without overrides", () => {
+    const solo = new SoloWordGameController("آرش", { totalRounds: 1 });
+    const snap = solo.getPublicSnapshot();
+    expect(snap.state.players[1].name).toBe("هوش مصنوعی رازواژه");
+    expect(snap.state.room_code).toBe("SOLO-AI");
+  });
+
+  it("presents a human persona and the REAL room code when shadow options are set", () => {
+    const solo = new SoloWordGameController(
+      "علی",
+      { totalRounds: 1 },
+      { opponentName: "سیمین اندیشه", roomCode: "K7Q2XZ" },
+    );
+    const snap = solo.getPublicSnapshot();
+    expect(snap.state.players[1].name).toBe("سیمین اندیشه");
+    expect(snap.state.players[1].connected).toBe(true);
+    expect(snap.state.room_code).toBe("K7Q2XZ");
+    // Rematch keeps the same persona & room (no AI-name leak mid-match).
+    const afterRematch = solo.rematch();
+    expect(afterRematch.state.players[1].name).toBe("سیمین اندیشه");
+    expect(afterRematch.state.room_code).toBe("K7Q2XZ");
+  });
+});

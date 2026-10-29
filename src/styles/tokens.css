@@ -85,8 +85,11 @@
   /* Typography */
   --font:
     "Vazirmatn", "Segoe UI", Tahoma, system-ui, -apple-system, sans-serif;
-  --font-num: "Vazirmatn", "SF Mono", ui-monospace, monospace;
-  --font-mono: "SF Mono", "Vazirmatn", ui-monospace, Menlo, Consolas, "Liberation Mono", monospace;
+  --font-en:
+    "Space Grotesk Variable", "Vazirmatn", system-ui, -apple-system, sans-serif;
+  --font-num: "Space Grotesk Variable", "Vazirmatn", "SF Mono", ui-monospace, monospace;
+  --font-mono:
+    "Space Grotesk Variable", "SF Mono", "Vazirmatn", ui-monospace, Menlo, Consolas, monospace;
 
   /* Motion */
   --tr-fast: 140ms;

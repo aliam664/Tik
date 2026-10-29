@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Activity,
   Flame,
@@ -32,12 +32,25 @@ const PHASE_FA: Record<string, string> = {
   crashed: "انفجار",
 };
 
+const DIST_BUCKETS = ["< ۱.۲۰×", "۱.۲۰–۲×", "۲–۵×", "۵–۱۰×", "۱۰×+"] as const;
+
 function bucketLabel(point: number): string {
   if (point < 120) return "< ۱.۲۰×";
   if (point < 200) return "۱.۲۰–۲×";
   if (point < 500) return "۲–۵×";
   if (point < 1000) return "۵–۱۰×";
   return "۱۰×+";
+}
+
+interface NormalizedRecentRow {
+  index: number;
+  phase: string;
+  crashPoint: number | null;
+  seedHash: string;
+  seed: string | null;
+  salt: string;
+  volume: number;
+  paid: number;
 }
 
 export function AdminBlastPanel({
@@ -49,13 +62,24 @@ export function AdminBlastPanel({
 }) {
   const { showToast } = useToast();
   const [rpc, setRpc] = useState<AdminCrashOps | null>(null);
+  const [rpcSyncedAt, setRpcSyncedAt] = useState<string | null>(null);
   const [rpcNote, setRpcNote] = useState<string | null>(null);
-  const [tick, setTick] = useState(0);
+  const [now, setNow] = useState<number>(() => Date.now());
+  const [clockOffsetMs, setClockOffsetMs] = useState<number>(0);
 
   const pullRpc = useCallback(async () => {
+    const clientMid = Date.now();
     try {
       const data = await adminApi.crashOps(token);
       setRpc(data);
+      const serverTs = data.server_now ? Date.parse(data.server_now) : NaN;
+      if (Number.isFinite(serverTs) && data.server_now) {
+        setClockOffsetMs(serverTs - clientMid);
+        setRpcSyncedAt(data.server_now);
+      } else {
+        setRpcSyncedAt(new Date(clientMid).toISOString());
+      }
+      setNow(Date.now());
       setRpcNote(null);
     } catch (err) {
       const user = toUserError(err);
@@ -64,7 +88,7 @@ export function AdminBlastPanel({
         return;
       }
       setRpc(null);
-      setRpcNote("RPC انفجار هنوز روی سرور نیست — تله‌متری سالن محلی نمایش داده می‌شود.");
+      setRpcNote("RPC انفجار در دسترس نیست — تله‌متری سالن محلی نمایش داده می‌شود.");
     }
   }, [onSessionExpired, token]);
 
@@ -73,41 +97,88 @@ export function AdminBlastPanel({
   }, [pullRpc]);
 
   useEffect(() => {
-    const id = window.setInterval(() => setTick((n) => n + 1), 400);
+    const id = window.setInterval(() => setNow(Date.now()), 400);
     return () => window.clearInterval(id);
   }, []);
 
   const salon = getSharedSalon();
-  const local = salon.getState();
+  const local = salon.getState(now);
   const tel = salon.getTelemetry();
-  void tick;
 
-  const now = Date.now();
-  const live =
-    local.round.phase === "flying" && local.round.flyingStartedAt
-      ? multiplierAt(now - local.round.flyingStartedAt)
+  const serverRound = rpc?.round;
+  const activePhase =
+    typeof serverRound?.phase === "string" ? serverRound.phase : local.round.phase;
+  const activeIndex =
+    typeof serverRound?.index === "number" ? serverRound.index : local.round.index;
+  const activeSeedHash =
+    typeof serverRound?.seed_hash === "string"
+      ? serverRound.seed_hash
+      : local.round.seedHash;
+  const serverFlyingStart =
+    typeof serverRound?.flying_started_at === "string"
+      ? Date.parse(serverRound.flying_started_at)
+      : null;
+  const serverCrashPoint =
+    typeof serverRound?.crash_point === "number" ? serverRound.crash_point : null;
+
+  const live = rpc
+    ? activePhase === "flying" && serverFlyingStart !== null && Number.isFinite(serverFlyingStart)
+      ? multiplierAt(Math.max(0, now + clockOffsetMs - serverFlyingStart))
+      : serverCrashPoint
+    : local.round.phase === "flying" && local.round.flyingStartedAt
+      ? multiplierAt(Math.max(0, now - local.round.flyingStartedAt))
       : local.round.crashPoint;
 
-  const hold = tel.playerWagered - tel.playerPaid;
-  const rtp = tel.playerWagered > 0 ? tel.playerPaid / tel.playerWagered : 0;
+  const recentRows: NormalizedRecentRow[] = rpc
+    ? rpc.recent.map((r) => ({
+        index: Number(r.index ?? 0),
+        phase: typeof r.phase === "string" ? r.phase : "crashed",
+        crashPoint: typeof r.crash_point === "number" ? r.crash_point : null,
+        seedHash: typeof r.seed_hash === "string" ? r.seed_hash : "",
+        seed: typeof r.seed === "string" ? r.seed : null,
+        salt: typeof r.salt === "string" ? r.salt : "",
+        volume: Number(r.volume ?? 0),
+        paid: Number(r.paid ?? 0),
+      }))
+    : tel.recent.map((r) => ({
+        index: r.index,
+        phase: "crashed",
+        crashPoint: r.crashPoint,
+        seedHash: r.seedHash,
+        seed: r.seed,
+        salt: r.salt,
+        volume: r.playerStake,
+        paid: r.playerPayout,
+      }));
 
-  const dist = useMemo(() => {
-    const buckets = ["< ۱.۲۰×", "۱.۲۰–۲×", "۲–۵×", "۵–۱۰×", "۱۰×+"] as const;
-    const counts = Object.fromEntries(buckets.map((b) => [b, 0])) as Record<string, number>;
-    for (const row of tel.recent) counts[bucketLabel(row.crashPoint)] += 1;
-    const max = Math.max(1, ...Object.values(counts));
-    return buckets.map((label) => ({ label, value: counts[label], max }));
-  }, [tel.recent]);
+  const crashedRecent = recentRows.filter(
+    (r): r is NormalizedRecentRow & { crashPoint: number } =>
+      r.phase === "crashed" && r.crashPoint !== null,
+  );
+
+  const counts = Object.fromEntries(DIST_BUCKETS.map((b) => [b, 0])) as Record<string, number>;
+  for (const row of crashedRecent) {
+    counts[bucketLabel(row.crashPoint)] += 1;
+  }
+  const distMax = Math.max(1, ...Object.values(counts));
+  const dist = DIST_BUCKETS.map((label) => ({ label, value: counts[label], max: distMax }));
+
+  const totalWagered = rpc ? Number(rpc.kpis.wagered ?? 0) : tel.playerWagered;
+  const totalPaid = rpc ? Number(rpc.kpis.paid ?? 0) : tel.playerPaid;
+  const totalRounds = rpc ? Number(rpc.kpis.rounds_total ?? 0) : tel.rounds;
+  const hold = totalWagered - totalPaid;
+  const rtp = totalWagered > 0 ? totalPaid / totalWagered : 0;
+  const biggestCrash = crashedRecent.reduce((mx, r) => Math.max(mx, r.crashPoint), 0);
 
   const kpis = [
-    { label: "راند جاری", value: toFaDigits(local.round.index), icon: <Flame size={16} /> },
-    { label: "راندهای نشست", value: toFaDigits(tel.rounds), icon: <Activity size={16} /> },
-    { label: "حجم شرط بازیکن", value: tel.playerWagered, coin: true },
-    { label: "پرداخت بازیکن", value: tel.playerPaid, coin: true },
+    { label: "راند جاری", value: toFaDigits(activeIndex), icon: <Flame size={16} /> },
+    { label: rpc ? "کل راندهای سرور" : "راندهای نشست", value: toFaDigits(totalRounds), icon: <Activity size={16} /> },
+    { label: "حجم شرط بازیکن", value: totalWagered, coin: true },
+    { label: "پرداخت بازیکن", value: totalPaid, coin: true },
     { label: "هلد خانه", value: hold, coin: true, signed: true },
     {
       label: "RTP تحقق‌یافته",
-      value: tel.playerWagered ? `${(rtp * 100).toFixed(1)}٪` : "—",
+      value: totalWagered ? `${(rtp * 100).toFixed(1)}٪` : "—",
       icon: <TrendingUp size={16} />,
     },
   ];
@@ -129,7 +200,7 @@ export function AdminBlastPanel({
           size="sm"
           icon={<RefreshCw size={14} aria-hidden="true" />}
           onClick={() => {
-            setTick((n) => n + 1);
+            setNow(Date.now());
             void pullRpc();
             showToast("تله‌متری انفجار تازه‌سازی شد", "info");
           }}
@@ -147,15 +218,15 @@ export function AdminBlastPanel({
         <p className="card__sub" role="status">
           {rpcNote}
         </p>
-      ) : rpc ? (
-        <p className="card__sub">منبع سرور فعال — {formatDateTime(new Date().toISOString())}</p>
+      ) : rpc && rpcSyncedAt ? (
+        <p className="card__sub">منبع سرور فعال — {formatDateTime(rpcSyncedAt)}</p>
       ) : null}
 
       <div className="blast-live">
         <div>
           <small>فاز</small>
-          <strong className={`crash-phase crash-phase--${local.round.phase}`}>
-            {PHASE_FA[local.round.phase]}
+          <strong className={`crash-phase crash-phase--${activePhase}`}>
+            {PHASE_FA[activePhase] ?? activePhase}
           </strong>
         </div>
         <div>
@@ -164,11 +235,11 @@ export function AdminBlastPanel({
         </div>
         <div>
           <small>تعهد راند</small>
-          <code className="ops-id">{local.round.seedHash.slice(0, 16)}…</code>
+          <code className="ops-id">{activeSeedHash.slice(0, 16)}…</code>
         </div>
         <div>
-          <small>شرط‌های این راند</small>
-          <strong>{toFaDigits(local.round.bets.length)}</strong>
+          <small>{rpc ? "کل شرط‌های ثبت‌شده" : "شرط‌های این راند"}</small>
+          <strong>{toFaDigits(rpc ? rpc.kpis.bets : local.round.bets.length)}</strong>
         </div>
       </div>
 
@@ -191,9 +262,9 @@ export function AdminBlastPanel({
       <div className="charts-grid-2">
         <div className="card">
           <h3 className="card__title" style={{ fontSize: "1rem" }}>
-            توزیع ضرایب نشست
+            توزیع ضرایب اخیر
           </h3>
-          <p className="card__sub">سطل‌بندی آخرین راندهای همین سالن</p>
+          <p className="card__sub">سطل‌بندی آخرین راندهای پایان‌یافته</p>
           <ul className="blast-bars">
             {dist.map((row) => (
               <li key={row.label}>
@@ -224,52 +295,37 @@ export function AdminBlastPanel({
               <dd>{toFaDigits(CRASHED_MS / 1000)} ثانیه</dd>
             </div>
             <div>
-              <dt>بزرگ‌ترین انفجار نشست</dt>
-              <dd dir="ltr">{tel.biggestCrash ? formatMultiplier(tel.biggestCrash) : "—"}</dd>
+              <dt>بزرگ‌ترین انفجار اخیر</dt>
+              <dd dir="ltr">{biggestCrash ? formatMultiplier(biggestCrash) : "—"}</dd>
             </div>
             <div>
-              <dt>بزرگ‌ترین برد بازیکن</dt>
+              <dt>{rpc ? "راندهای ۲۴ ساعت اخیر" : "بزرگ‌ترین برد بازیکن"}</dt>
               <dd>
-                <CoinAmount amount={tel.biggestWin} signed size={14} />
+                {rpc ? (
+                  toFaDigits(rpc.kpis.rounds_24h)
+                ) : (
+                  <CoinAmount amount={tel.biggestWin} signed size={14} />
+                )}
               </dd>
             </div>
             <div>
-              <dt>خروج / باخت بازیکن</dt>
+              <dt>{rpc ? "شرط‌های برداشت‌شده / کل" : "خروج / باخت بازیکن"}</dt>
               <dd>
-                {toFaDigits(tel.playerCashes)} / {toFaDigits(tel.playerBusts)}
+                {rpc
+                  ? `${toFaDigits(rpc.kpis.cashed)} / ${toFaDigits(rpc.kpis.bets)}`
+                  : `${toFaDigits(tel.playerCashes)} / ${toFaDigits(tel.playerBusts)}`}
               </dd>
             </div>
           </dl>
         </div>
       </div>
 
-      {rpc?.kpis ? (
-        <div className="ops-kpi" aria-label="KPI سرور">
-          <div className="ops-kpi__cell">
-            <small>راند سرور</small>
-            <strong>{toFaDigits(rpc.kpis.rounds_total)}</strong>
-          </div>
-          <div className="ops-kpi__cell">
-            <small>۲۴ ساعت</small>
-            <strong>{toFaDigits(rpc.kpis.rounds_24h)}</strong>
-          </div>
-          <div className="ops-kpi__cell">
-            <small>حجم کل</small>
-            <strong>{toFaDigits(rpc.kpis.wagered)}</strong>
-          </div>
-          <div className="ops-kpi__cell">
-            <small>پرداخت کل</small>
-            <strong>{toFaDigits(rpc.kpis.paid)}</strong>
-          </div>
-        </div>
-      ) : null}
-
       <div className="card">
         <h3 className="card__title" style={{ fontSize: "1rem", marginBottom: 10 }}>
           راندهای اخیر و راستی‌آزمایی
         </h3>
-        {tel.recent.length === 0 ? (
-          <p className="ops-empty">هنوز راندی در این نشست تمام نشده. از هاب وارد سالن شوید.</p>
+        {crashedRecent.length === 0 ? (
+          <p className="ops-empty">هنوز راند پایان‌یافته‌ای ثبت نشده است. از هاب وارد سالن شوید.</p>
         ) : (
           <div className="table-wrap">
             <table className="admin-data-table">
@@ -284,20 +340,20 @@ export function AdminBlastPanel({
                 </tr>
               </thead>
               <tbody>
-                {tel.recent.slice(0, 24).map((row) => {
-                  const check = verifyFair(row.seed, row.salt, row.crashPoint);
+                {crashedRecent.slice(0, 24).map((row) => {
+                  const check = row.seed ? verifyFair(row.seed, row.salt, row.crashPoint) : null;
                   return (
                     <tr key={row.index}>
                       <td className="num">{toFaDigits(row.index)}</td>
                       <td dir="ltr">{formatMultiplier(row.crashPoint)}</td>
                       <td>
-                        <CoinAmount amount={row.playerStake} size={12} />
+                        <CoinAmount amount={row.volume} size={12} />
                       </td>
                       <td>
-                        <CoinAmount amount={row.playerPayout} size={12} />
+                        <CoinAmount amount={row.paid} size={12} />
                       </td>
                       <td>
-                        {check.ok ? (
+                        {check?.ok ? (
                           <span className="is-up">
                             <ShieldCheck size={14} aria-hidden="true" /> معتبر
                           </span>
