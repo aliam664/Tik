@@ -71,6 +71,8 @@ interface InternalSoloRound {
 export class SoloWordGameController {
   private readonly humanName: string;
   private rules: WordGameRulesConfig;
+  private readonly shadowOpponentName: string | null;
+  private readonly shadowRoomCode: string | null;
   private status: "active" | "finished" = "active";
   private gameNumber = 1;
   private version = 1;
@@ -83,9 +85,19 @@ export class SoloWordGameController {
   constructor(
     humanDisplayName: string,
     rulesPatch?: Partial<WordGameRulesConfig>,
+    /**
+     * Shadow-opponent presentation overrides used by the hidden bot system:
+     * seat 2 shows a human persona and the snapshot advertises the REAL room
+     * code, making the match indistinguishable from a live online duel.
+     */
+    shadowOptions?: { opponentName?: string; roomCode?: string },
   ) {
     this.humanName = humanDisplayName.trim() || "شما";
     this.rules = resolveRulesConfig(rulesPatch);
+    const persona = shadowOptions?.opponentName?.trim();
+    this.shadowOpponentName = persona ? persona : null;
+    const roomOverride = shadowOptions?.roomCode?.trim();
+    this.shadowRoomCode = roomOverride ? roomOverride : null;
     this.players = [
       {
         seat: 1,
@@ -100,7 +112,7 @@ export class SoloWordGameController {
       },
       {
         seat: 2,
-        name: "هوش مصنوعی رازواژه",
+        name: this.shadowOpponentName ?? "هوش مصنوعی رازواژه",
         score: 0,
         ready: true,
         connected: true,
@@ -495,7 +507,7 @@ export class SoloWordGameController {
       this.status === "finished" ? (s1 > s2 ? 1 : s2 > s1 ? 2 : null) : null;
 
     const state: WordRoomState = {
-      room_code: "SOLO-AI",
+      room_code: this.shadowRoomCode ?? "SOLO-AI",
       status: this.status,
       max_players: 2,
       game_number: this.gameNumber,

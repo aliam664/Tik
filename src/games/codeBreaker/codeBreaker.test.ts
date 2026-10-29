@@ -157,3 +157,30 @@ describe("Word Cipher (رازواژه) — Regression Tests for Audited Bug Fixe
     expect(() => solo.submitHumanGuess("واژه اول آزمایشی")).toThrow("DUPLICATE_GUESS");
   });
 });
+
+describe("Shadow Opponent presentation overrides (hidden bot matchmaking)", () => {
+  it("keeps the default AI persona and SOLOAI code without overrides", () => {
+    const ctrl = new SoloCodeBreakerController("علی", null, "0072");
+    const snap = ctrl.getSnapshot();
+    expect(snap.state.players[1].name).toBe("واحد رمزگشای AI");
+    expect(snap.room_code).toBe("SOLOAI");
+    expect(snap.state.room_code).toBe("SOLOAI");
+  });
+
+  it("presents a human persona and the REAL room code when shadow options are set", () => {
+    const ctrl = new SoloCodeBreakerController(
+      "علی",
+      null,
+      "0072",
+      { opponentName: "آرماند منطق", roomCode: "B4KE9R" },
+    );
+    ctrl.setReady(true);
+    const snap = ctrl.getSnapshot();
+    expect(snap.state.players[1].name).toBe("آرماند منطق");
+    expect(snap.state.players[1].connected).toBe(true);
+    expect(snap.room_code).toBe("B4KE9R");
+    expect(snap.state.room_code).toBe("B4KE9R");
+    // Round actually starts so the duel looks live.
+    expect(snap.state.status).toBe("active");
+  });
+});

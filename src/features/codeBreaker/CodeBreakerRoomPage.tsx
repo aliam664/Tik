@@ -12,9 +12,11 @@ import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useEconomyProfile } from "@/hooks/useEconomyProfile";
 import { codeBreakerApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
+import { useShadowOpponent } from "@/lib/shadowOpponent";
 import { supabase } from "@/lib/supabase";
 import type { CodeBreakerStateResponse } from "@/types/codeBreaker";
 import { CodeBreakerArenaView } from "./CodeBreakerArenaView";
+import { SoloCodeBreakerController } from "@/games/codeBreaker/engine";
 
 export function CodeBreakerRoomPage() {
   const { roomCode: rawParam } = useParams<{ roomCode: string }>();
@@ -108,6 +110,61 @@ export function CodeBreakerRoomPage() {
       window.removeEventListener("focus", onFocusOrOnline);
     };
   }, [roomCode, syncState]);
+
+  /* ----------------------- hidden shadow opponent ----------------------- */
+  // A seated player left alone gets a human-like bot on seat 2 after a short
+  // randomized delay — the duel runs locally but looks exactly like the room.
+  const seatedAlone = Boolean(
+    session?.playerToken &&
+      snapshot &&
+      snapshot.seat !== null &&
+      snapshot.state.status === "waiting" &&
+      snapshot.state.players.length < snapshot.state.max_players,
+  );
+  const shadow = useShadowOpponent({ game: "code_breaker", armed: seatedAlone });
+  const [shadowCtrl, setShadowCtrl] = useState<SoloCodeBreakerController | null>(null);
+  const [shadowSnap, setShadowSnap] = useState<CodeBreakerStateResponse | null>(null);
+
+  useEffect(() => {
+    if (!shadow.active) {
+      setShadowCtrl(null);
+      setShadowSnap(null);
+      return;
+    }
+    if (shadowCtrl) return;
+    const ctrl = new SoloCodeBreakerController(
+      session?.displayName ?? directJoinName ?? "شما",
+      null,
+      undefined,
+      { opponentName: shadow.name, roomCode },
+    );
+    // Auto-ready both seats so the duel starts immediately, like a real match.
+    setShadowCtrl(ctrl);
+    setShadowSnap(ctrl.setReady(true));
+  }, [
+    shadow.active,
+    shadow.name,
+    shadowCtrl,
+    session?.displayName,
+    directJoinName,
+    roomCode,
+  ]);
+
+  // Hidden opponent plays on its own clock (~one logical guess every 5.5s),
+  // mirroring the live AI-practice duel cadence.
+  useEffect(() => {
+    if (!shadow.active || !shadowCtrl || shadowSnap?.state.status !== "active") {
+      return;
+    }
+    const tickId = window.setInterval(() => {
+      setShadowSnap((prev) => {
+        if (!prev || prev.state.status !== "active") return prev;
+        const next = shadowCtrl.triggerAiStep();
+        return next ?? prev;
+      });
+    }, 5500);
+    return () => window.clearInterval(tickId);
+  }, [shadow.active, shadowCtrl, shadowSnap?.state.status]);
 
   const runAction = async (fn: () => Promise<CodeBreakerStateResponse>): Promise<boolean> => {
     if (inFlightRef.current) return false;
@@ -280,6 +337,34 @@ export function CodeBreakerRoomPage() {
             </Button>
           </div>
         </Card>
+      </div>
+    );
+  }
+
+  // Hidden shadow duel: seat 2 filled by the bot — full local match that
+  // mirrors the live room (real room code, human persona, live-looking HUD).
+  if (shadow.active && shadowCtrl && shadowSnap) {
+    return (
+      <div className="container cb-arena" style={{ paddingBlock: "1.5rem" }}>
+        <CodeBreakerArenaView
+          snapshot={shadowSnap}
+          busy={busy}
+          onCopyInvite={handleCopyInvite}
+          actions={{
+            onSetReady: (ready) => setShadowSnap(shadowCtrl.setReady(ready)),
+            onSubmitGuess: (guessCode) => {
+              try {
+                setShadowSnap(shadowCtrl.submitGuess(guessCode));
+                return true;
+              } catch (err) {
+                show(getErrorMessage(err), "error");
+                return false;
+              }
+            },
+            onRematch: () => setShadowSnap(shadowCtrl.rematch()),
+            onLeave: handleLeave,
+          }}
+        />
       </div>
     );
   }

@@ -39,6 +39,11 @@ import { useEconomyProfile } from "@/hooks/useEconomyProfile";
 import { getErrorMessage } from "@/lib/errors";
 import { toFaDigits } from "@/lib/format";
 import { frameFromView, liveMultiplier, type CrashLink } from "./crashView";
+import {
+  buildShadowCrowd,
+  shadowGuestCashed,
+  type ShadowCrowdBet,
+} from "./shadowCrowd";
 import { useCrashSalon } from "./useCrashSalon";
 
 type SlotDraft = { stake: number; autoOn: boolean; auto: string };
@@ -353,9 +358,20 @@ export function CrashArenaPage() {
     return verifyFair(r.seed, r.salt, r.crashPoint);
   }, [view]);
 
+  // Hidden virtual guests keep the live salon alive when real bettors are
+  // scarce — feed display only (no wallet / round-math impact).
+  const feedBets = useMemo(() => {
+    const real = view?.round.bets ?? [];
+    if (!view || view.mode !== "live") return real;
+    const others = real.filter((b) => !b.isMe).length;
+    const need = Math.max(0, 3 - others);
+    if (need === 0) return real;
+    return [...real, ...buildShadowCrowd(view.round.index, need)];
+  }, [view]);
+
   const roundVolume = useMemo(
-    () => (view?.round.bets ?? []).reduce((s, b) => s + b.amount, 0),
-    [view],
+    () => feedBets.reduce((s, b) => s + b.amount, 0),
+    [feedBets],
   );
 
   const category =
@@ -493,7 +509,7 @@ export function CrashArenaPage() {
             <em className={`crash-phase crash-phase--${phase}`}>{PHASE_LABEL[phase]}</em>
             <span className="crash-hud-stat" title="شرط‌های این راند">
               <Users size={13} aria-hidden="true" />
-              {toFaDigits(view?.round.bets.length ?? 0)}
+              {toFaDigits(feedBets.length)}
             </span>
             <span className="crash-hud-stat" title="حجم این راند">
               <Activity size={13} aria-hidden="true" />
@@ -757,9 +773,9 @@ export function CrashArenaPage() {
         <section className="crash-feed" aria-label="سالن زنده">
           <h2>
             <Users size={15} aria-hidden="true" /> سالن زنده
-            <em>{toFaDigits(view?.round.bets.length ?? 0)} شرط</em>
+            <em>{toFaDigits(feedBets.length)} شرط</em>
           </h2>
-          {(view?.round.bets.length ?? 0) === 0 ? (
+          {feedBets.length === 0 ? (
             <p className="crash-empty">
               {phase === "betting"
                 ? "پنجرهٔ شرط باز است — اولین نفر باش!"
@@ -767,30 +783,41 @@ export function CrashArenaPage() {
             </p>
           ) : (
             <ul>
-              {(view?.round.bets ?? []).map((bet) => (
-                <li key={bet.id} className={bet.isMe ? "is-me" : ""}>
-                  <span className="crash-feed__name">
-                    <i aria-hidden="true">{bet.name.slice(0, 1)}</i>
-                    {bet.name}
-                    {bet.isMe ? <em>(شما)</em> : null}
-                  </span>
-                  <span className="crash-feed__stake">
-                    <CoinAmount amount={bet.amount} size={12} />
-                  </span>
-                  <span className="crash-feed__auto">
-                    {bet.autoAt !== null ? `خودکار ${toFaDigits(formatMultiplier(bet.autoAt))}` : "دستی"}
-                  </span>
-                  <strong>
-                    {bet.cashedAt !== null
-                      ? `خروج ${toFaDigits(formatMultiplier(bet.cashedAt))} · +${faNum(bet.payout)}`
-                      : phase === "crashed"
-                        ? "باخت"
-                        : phase === "flying" && shown !== null
-                          ? `در بازی · ${faNum(payoutFor(bet.amount, shown))} sh`
-                          : "در بازی"}
-                  </strong>
-                </li>
-              ))}
+              {feedBets.map((bet) => {
+                const guest = bet as ShadowCrowdBet;
+                const shadowCashed =
+                  guest.shadow === true &&
+                  shadowGuestCashed(guest, shown, phase);
+                const cashedAt = shadowCashed ? guest.cashTarget : bet.cashedAt;
+                const cashedPayout =
+                  cashedAt !== null ? payoutFor(bet.amount, cashedAt) : 0;
+                return (
+                  <li key={bet.id} className={bet.isMe ? "is-me" : ""}>
+                    <span className="crash-feed__name">
+                      <i aria-hidden="true">{bet.name.slice(0, 1)}</i>
+                      {bet.name}
+                      {bet.isMe ? <em>(شما)</em> : null}
+                    </span>
+                    <span className="crash-feed__stake">
+                      <CoinAmount amount={bet.amount} size={12} />
+                    </span>
+                    <span className="crash-feed__auto">
+                      {bet.autoAt !== null
+                        ? `خودکار ${toFaDigits(formatMultiplier(bet.autoAt))}`
+                        : "دستی"}
+                    </span>
+                    <strong>
+                      {cashedAt !== null
+                        ? `خروج ${toFaDigits(formatMultiplier(cashedAt))} · +${faNum(cashedPayout)}`
+                        : phase === "crashed"
+                          ? "باخت"
+                          : phase === "flying" && shown !== null
+                            ? `در بازی · ${faNum(payoutFor(bet.amount, shown))} sh`
+                            : "در بازی"}
+                    </strong>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

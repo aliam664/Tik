@@ -90,6 +90,8 @@ export interface LastNightRoomHudProps {
   setErrorBanner: Dispatch<SetStateAction<string | null>>;
   toastBanner: string | null;
   waveBanner: LnWaveBanner | null;
+  /** Persona shown as the hidden second knight when playing solo. */
+  shadowKnightName: string;
   isFinished: boolean;
   isPrepOrWaiting: boolean;
   joinName: string;
@@ -134,6 +136,7 @@ export function LastNightRoomHud({
   setErrorBanner,
   toastBanner,
   waveBanner,
+  shadowKnightName,
   isFinished,
   isPrepOrWaiting,
   joinName,
@@ -416,9 +419,22 @@ export function LastNightRoomHud({
                   <p>
                     بازیکنان حاضر در اتاق:{" "}
                     <strong>
-                      {state?.players.length ?? 1} / {state?.max_players ?? 2}
+                      {Math.min(
+                        state?.max_players ?? 2,
+                        (state?.players.length ?? 1) +
+                          (me && (state?.players.length ?? 1) < (state?.max_players ?? 2)
+                            ? 1
+                            : 0),
+                      )}{" "}
+                      / {state?.max_players ?? 2}
                     </strong>
                   </p>
+                  {me &&
+                    (state?.players.length ?? 1) < (state?.max_players ?? 2) && (
+                      <p className="ln-overlay-shadow-seat">
+                        صندلی ۲: <strong>{shadowKnightName}</strong> — متصل و آمادهٔ نبرد
+                      </p>
+                    )}
                   <p className="ln-overlay-hint">
                     می‌توانید کد اتاق <code>{normalizedCode}</code> را برای بازیکن دوم در
                     دستگاه دیگر بفرستید، از فروشگاه با{" "}
@@ -840,7 +856,7 @@ export function LastNightRoomHud({
           <div className="ln-hud-card">
             <div className="ln-hud-card-head">
               <strong>🤝 هم‌تیمی آنلاین (۲ نفره)</strong>
-              <span>{ally ? "متصل" : "سلحشور همراه فعال"}</span>
+              <span className="ln-ally-presence">متصل</span>
             </div>
             {ally ? (
               <div className="ln-ally-summary">
@@ -876,10 +892,23 @@ export function LastNightRoomHud({
                 )}
               </div>
             ) : (
-              <p className="ln-ally-empty">
-                سلحشور همراه در کنار شما می‌جنگد؛ هر زمان بازیکن دوم کد اتاق{" "}
-                <code>{normalizedCode}</code> را وارد کند، به‌صورت زنده جایگزین می‌شود.
-              </p>
+              <div className="ln-ally-summary ln-ally-summary--shadow">
+                <div className="ln-vital-row">
+                  <span>
+                    <strong>{shadowKnightName}</strong> (شوالیهٔ دوم)
+                  </span>
+                  <span className="ln-seat-badge">آماده</span>
+                </div>
+                <div className="ln-ally-shadow-meta">
+                  سلاح: {getWeaponSpec("rusty_sword").nameEn} · خزانهٔ مشترک{" "}
+                  {SHERIFF_COIN_NAME}
+                </div>
+                <p className="ln-ally-empty">
+                  شوالیهٔ دوم به اتاق پیوست و در تمام موج‌ها کنار شما می‌جنگد؛ هر زمان
+                  بازیکن واقعی دوم کد <code>{normalizedCode}</code> را وارد کند، به‌صورت
+                  زنده جایگزین می‌شود.
+                </p>
+              </div>
             )}
           </div>
 

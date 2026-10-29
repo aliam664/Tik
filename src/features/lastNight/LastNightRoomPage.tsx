@@ -44,6 +44,7 @@ import { medievalAudio } from "@/games/lastNight/sound";
 import { useEconomyProfile } from "@/hooks/useEconomyProfile";
 import { lastNightApi } from "@/lib/api";
 import { getErrorMessage, toUserError } from "@/lib/errors";
+import { pickShadowPersona } from "@/lib/shadowOpponent";
 import { supabase } from "@/lib/supabase";
 import type {
   LnRoomPlayer,
@@ -121,6 +122,8 @@ export function LastNightRoomPage() {
   const [autoAimEnabled, setAutoAimEnabled] = useState(true);
   const [theaterMode, setTheaterMode] = useState(false);
   const [waveBanner, setWaveBanner] = useState<LnWaveBanner | null>(null);
+  // Hidden second knight: the solo companion is presented as a real player.
+  const [shadowKnightName] = useState(() => pickShadowPersona("last_night"));
 
   const [hudSnapshot, setHudSnapshot] = useState<{
     hp: number;
@@ -2314,10 +2317,10 @@ export function LastNightRoomPage() {
           reloadingProgress: null,
         });
       } else if (state?.status === "active") {
-        // Render loyal Squire companion when playing solo
+        // The loyal second knight (hidden AI companion) renders when playing solo
         playersToRender.push({
           seat: 2,
-          name: "سلحشور همراه (AI)",
+          name: shadowKnightName,
           isLocal: false,
           role: "squire",
           x: sim.squireX,
@@ -2356,7 +2359,7 @@ export function LastNightRoomPage() {
         nearestInteractableId: sim.nearestInteractableId,
       });
     },
-    [me, session],
+    [me, session, shadowKnightName],
   );
 
   const updateHandlerRef = useRef(handleUpdate);
@@ -2438,6 +2441,7 @@ export function LastNightRoomPage() {
       handleJoinRoom={handleJoinRoom}
       hudSnapshot={hudSnapshot}
       waveBanner={waveBanner}
+      shadowKnightName={shadowKnightName}
       simRef={simRef}
       setCanvasElement={setCanvasElement}
       busyId={busyId}
